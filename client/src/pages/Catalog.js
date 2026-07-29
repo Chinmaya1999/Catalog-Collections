@@ -183,13 +183,17 @@ const Catalog = memo(() => {
                   >
                     <div onClick={() => setSelectedCatalog(catalog)} className="cursor-pointer">
                       <div className="card group">
-                        <div className="relative h-48 bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 flex items-center justify-center">
+                        <div className="relative h-48 bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 flex items-center justify-center overflow-hidden">
                           {catalog.new && (
-                            <span className="absolute top-3 left-3 bg-brand-yellow text-brand-dark px-2 py-1 rounded-full text-xs font-semibold">
+                            <span className="absolute top-3 left-3 bg-brand-yellow text-brand-dark px-2 py-1 rounded-full text-xs font-semibold z-10">
                               NEW
                             </span>
                           )}
-                          <span className="text-6xl">{catalog.image}</span>
+                          <img 
+                            src={catalog.image} 
+                            alt={catalog.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
                         </div>
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-brand-dark mb-2">{catalog.name}</h3>
@@ -236,11 +240,15 @@ const Catalog = memo(() => {
                           <div className={`card group ${viewMode === 'list' ? 'flex' : ''}`}>
                             <div className={`relative ${viewMode === 'list' ? 'w-48 flex-shrink-0' : 'h-56'} bg-gray-100 flex items-center justify-center overflow-hidden`}>
                               {product.ecoFriendly && (
-                                <span className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                <span className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold z-10">
                                   🌱 Eco
                                 </span>
                               )}
-                              <span className="text-6xl">{product.icon}</span>
+                              <img 
+                                src={product.image} 
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                              />
                             </div>
                             <div className={`p-4 ${viewMode === 'list' ? 'flex-grow' : ''}`}>
                               <h3 className="font-semibold text-brand-dark mb-2 line-clamp-2">{product.name}</h3>
