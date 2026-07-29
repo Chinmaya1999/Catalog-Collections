@@ -8,7 +8,6 @@ import PDFViewer from '../components/PDFViewer';
 const Home = memo(() => {
   const [selectedCatalog, setSelectedCatalog] = useState(null);
   const featuredProducts = React.useMemo(() => products.filter(p => p.featured), []);
-  const featuredCatalogs = React.useMemo(() => catalogs.filter(c => c.featured), []);
 
   const containerVariants = {
     hidden: { opacity: 0 },

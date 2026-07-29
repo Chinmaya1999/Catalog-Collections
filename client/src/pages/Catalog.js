@@ -1,4 +1,4 @@
-import React, { useState, memo, useCallback } from 'react';
+import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Grid, List, Search, ExternalLink } from 'lucide-react';
 import { catalogs, products, categories } from '../data/catalogs';
