@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-brand-light text-brand-dark antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-yellow text-brand-dark font-semibold px-6 py-3 rounded-lg hover:bg-brand-gold transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-brand-dark text-white font-semibold px-6 py-3 rounded-lg hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  .card {
+    @apply bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow outline-none transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-yellow to-brand-gold bg-clip-text text-transparent;
+  }
+  
+  .bg-gradient-brand {
+    @apply bg-gradient-to-r from-brand-yellow to-brand-gold;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFA500;
+}
