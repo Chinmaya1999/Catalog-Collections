@@ -1,11 +1,13 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = memo(() => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,12 +17,50 @@ const Navbar = memo(() => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    // Check admin login status
+    const checkAdminStatus = () => {
+      const token = localStorage.getItem('adminToken');
+      setIsAdminLoggedIn(!!token);
+    };
+
+    checkAdminStatus();
+
+    // Listen for storage changes (for when user logs in/out in other tabs)
+    window.addEventListener('storage', checkAdminStatus);
+    
+    // Custom event for same-tab login/logout
+    const handleAuthChange = () => {
+      checkAdminStatus();
+    };
+    
+    window.addEventListener('adminAuthChange', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('storage', checkAdminStatus);
+      window.removeEventListener('adminAuthChange', handleAuthChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminInfo');
+    setIsAdminLoggedIn(false);
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('adminAuthChange'));
+    navigate('/');
+  };
+
   const navItems = [
     { name: 'Home', path: '/' },
     { name: 'Catalog', path: '/catalog' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];
+
+  const adminNavItems = isAdminLoggedIn ? [
+    { name: 'Admin Dashboard', path: '/admin/dashboard' }
+  ] : [];
 
   return (
     <motion.nav
@@ -61,6 +101,28 @@ const Navbar = memo(() => {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Admin Navigation */}
+            {adminNavItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.path}
+                className="text-brand-yellow hover:text-brand-dark font-medium transition-colors duration-300"
+              >
+                {item.name}
+              </Link>
+            ))}
+
+            {/* Admin Logout Button */}
+            {isAdminLoggedIn && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium transition-colors duration-300"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -100,6 +162,32 @@ const Navbar = memo(() => {
                   {item.name}
                 </Link>
               ))}
+              
+              {/* Admin Navigation */}
+              {adminNavItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  onClick={() => setIsOpen(false)}
+                  className="block text-brand-yellow hover:text-brand-dark font-medium py-2 transition-colors duration-300"
+                >
+                  {item.name}
+                </Link>
+              ))}
+
+              {/* Admin Logout Button */}
+              {isAdminLoggedIn && (
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium py-2 transition-colors duration-300 w-full"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              )}
             </div>
           </motion.div>
         )}

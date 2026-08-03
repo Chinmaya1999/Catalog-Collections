@@ -1,13 +1,53 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Gift, ExternalLink } from 'lucide-react';
-import { catalogs, products } from '../data/catalogs';
 import PDFViewer from '../components/PDFViewer';
 
 const Home = memo(() => {
   const [selectedCatalog, setSelectedCatalog] = useState(null);
-  const featuredProducts = React.useMemo(() => products.filter(p => p.featured), []);
+  const [catalogs, setCatalogs] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDynamicData();
+  }, []);
+
+  const fetchDynamicData = async () => {
+    try {
+      // Fetch catalogs
+      const catalogsRes = await fetch('http://localhost:5002/api/catalog');
+      if (catalogsRes.ok) {
+        const catalogsData = await catalogsRes.json();
+        setCatalogs(catalogsData);
+      }
+
+      // Fetch products (using catalogs with type 'product')
+      const productsRes = await fetch('http://localhost:5002/api/catalog');
+      if (productsRes.ok) {
+        const allData = await productsRes.json();
+        setProducts(allData.filter(item => item.type === 'product'));
+      }
+    } catch (error) {
+      console.error('Error fetching dynamic data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const featuredProducts = React.useMemo(() => products.filter(p => p.featured), [products]);
+
+  if (loading) {
+    return (
+      <div className="pt-20 min-h-screen bg-brand-light flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-yellow mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -101,7 +141,7 @@ const Home = memo(() => {
           >
             {catalogs.filter(c => c.featured).map((catalog) => (
               <motion.div
-                key={catalog.id}
+                key={catalog._id}
                 variants={itemVariants}
                 whileHover={{ scale: 1.05 }}
               >
@@ -114,7 +154,7 @@ const Home = memo(() => {
                         </span>
                       )}
                       <img 
-                        src={catalog.image} 
+                        src={catalog.image?.startsWith('/uploads') ? `http://localhost:5002${catalog.image}` : catalog.image} 
                         alt={catalog.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
@@ -161,7 +201,7 @@ const Home = memo(() => {
           >
             {featuredProducts.slice(0, 8).map((product) => (
               <motion.div
-                key={product.id}
+                key={product._id}
                 variants={itemVariants}
                 whileHover={{ y: -10 }}
               >
@@ -174,7 +214,7 @@ const Home = memo(() => {
                         </span>
                       )}
                       <img 
-                        src={product.image} 
+                        src={product.image?.startsWith('/uploads') ? `http://localhost:5002${product.image}` : product.image} 
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
@@ -183,7 +223,7 @@ const Home = memo(() => {
                       <h3 className="font-semibold text-brand-dark mb-2 line-clamp-2">{product.name}</h3>
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">{product.category}</span>
+                        <span className="text-sm text-gray-500">{product.categoryName || product.category}</span>
                         <ExternalLink className="w-5 h-5 text-brand-yellow group-hover:translate-x-2 transition-transform" />
                       </div>
                     </div>

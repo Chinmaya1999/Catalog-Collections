@@ -50,6 +50,7 @@ const Footer = memo(() => {
               <li><Link to="/catalog" className="text-gray-400 hover:text-white transition-colors">Catalog</Link></li>
               <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">About Us</Link></li>
               <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
+              <li><Link to="/admin/login" className="text-gray-400 hover:text-brand-yellow transition-colors font-semibold">Admin Login</Link></li>
             </ul>
           </div>
 

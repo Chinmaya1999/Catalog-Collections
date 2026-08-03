@@ -7,27 +7,46 @@ const PDFViewer = memo(({ driveUrl, catalog, onClose }) => {
   const [embedUrl, setEmbedUrl] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isUploadedPdf, setIsUploadedPdf] = useState(false);
 
   useEffect(() => {
-    // Convert Google Drive view URL to embed URL
-    const convertToEmbedUrl = (url) => {
-      // Extract file ID from Google Drive URL
-      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        const fileId = match[1];
-        return `https://drive.google.com/file/d/${fileId}/preview`;
-      }
-      return null;
-    };
-
-    const embed = convertToEmbedUrl(driveUrl);
-    if (embed) {
-      setEmbedUrl(embed);
-    } else {
+    // Check if catalog has uploaded PDF or drive link
+    const pdfUrl = catalog?.pdfFile || driveUrl;
+    
+    if (!pdfUrl) {
       setError(true);
       setLoading(false);
+      return;
     }
-  }, [driveUrl]);
+
+    // Check if it's an uploaded PDF (starts with /uploads) or drive link
+    if (pdfUrl.startsWith('/uploads')) {
+      // It's an uploaded PDF
+      setIsUploadedPdf(true);
+      setEmbedUrl(`http://localhost:5002${pdfUrl}`);
+      setLoading(false);
+    } else {
+      // It's a Google Drive link
+      setIsUploadedPdf(false);
+      const convertToEmbedUrl = (url) => {
+        // Extract file ID from Google Drive URL
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          const fileId = match[1];
+          return `https://drive.google.com/file/d/${fileId}/preview`;
+        }
+        return null;
+      };
+
+      const embed = convertToEmbedUrl(pdfUrl);
+      if (embed) {
+        setEmbedUrl(embed);
+      } else {
+        setError(true);
+        setLoading(false);
+      }
+    }
+  }, [driveUrl, catalog]);
 
   const handleLoad = () => {
     setLoading(false);
@@ -96,7 +115,7 @@ const PDFViewer = memo(({ driveUrl, catalog, onClose }) => {
           
           <div className="flex items-center gap-3">
             <a
-              href={driveUrl}
+              href={catalog?.pdfFile || driveUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 bg-brand-yellow text-brand-dark rounded-lg hover:bg-brand-gold transition-colors"
@@ -104,15 +123,17 @@ const PDFViewer = memo(({ driveUrl, catalog, onClose }) => {
               <Download className="w-4 h-4" />
               Download
             </a>
-            <a
-              href={driveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-brand-dark rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Open in Drive
-            </a>
+            {!isUploadedPdf && (
+              <a
+                href={driveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-brand-dark rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open in Drive
+              </a>
+            )}
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-200 rounded-full transition-colors"
@@ -146,18 +167,39 @@ const PDFViewer = memo(({ driveUrl, catalog, onClose }) => {
           {error ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
               <div className="text-center p-8">
-                <p className="text-gray-600 mb-4">Unable to load PDF inline</p>
-                <a
-                  href={driveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-brand-yellow text-brand-dark rounded-lg hover:bg-brand-gold transition-colors"
+                <p className="text-gray-600 mb-4">
+                  {!(catalog?.pdfFile || driveUrl) 
+                    ? 'No PDF file available for this catalog' 
+                    : 'Unable to load PDF inline'}
+                </p>
+                {(catalog?.pdfFile || driveUrl) && (
+                  <a
+                    href={catalog?.pdfFile || driveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-brand-yellow text-brand-dark rounded-lg hover:bg-brand-gold transition-colors"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    {isUploadedPdf ? 'Open PDF' : 'Open in Google Drive'}
+                  </a>
+                )}
+                <button
+                  onClick={onClose}
+                  className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-gray-200 text-brand-dark rounded-lg hover:bg-gray-300 transition-colors"
                 >
-                  <ExternalLink className="w-5 h-5" />
-                  Open in Google Drive
-                </a>
+                  Close
+                </button>
               </div>
             </div>
+          ) : isUploadedPdf ? (
+            <iframe
+              src={embedUrl}
+              className="w-full h-full border-0"
+              onLoad={handleLoad}
+              onError={handleError}
+              type="application/pdf"
+              title="Catalog PDF"
+            />
           ) : (
             <iframe
               src={embedUrl}
