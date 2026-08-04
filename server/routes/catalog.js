@@ -31,7 +31,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new catalog (admin only)
-router.post('/', auth, [
+router.post('/', auth, upload.none(), [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('description').trim().notEmpty().withMessage('Description is required'),
   body('category').notEmpty().withMessage('Category is required'),
@@ -57,7 +57,7 @@ router.post('/', auth, [
       new: req.body.new || false,
       ecoFriendly: req.body.ecoFriendly || false,
       order: req.body.order || 0,
-      products: req.body.products ? JSON.parse(req.body.products) : []
+      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : []
     };
 
     const catalog = new Catalog(catalogData);
@@ -74,7 +74,7 @@ router.post('/', auth, [
 });
 
 // Update catalog (admin only)
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, upload.none(), async (req, res) => {
   try {
     const catalog = await Catalog.findById(req.params.id);
     if (!catalog) {
@@ -95,7 +95,7 @@ router.put('/:id', auth, async (req, res) => {
       new: req.body.new !== undefined ? req.body.new : catalog.new,
       ecoFriendly: req.body.ecoFriendly !== undefined ? req.body.ecoFriendly : catalog.ecoFriendly,
       order: req.body.order || catalog.order,
-      products: req.body.products ? JSON.parse(req.body.products) : catalog.products
+      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : catalog.products
     };
 
     const updatedCatalog = await Catalog.findByIdAndUpdate(
