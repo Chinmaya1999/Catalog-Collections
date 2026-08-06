@@ -8,8 +8,7 @@ import {
   Phone,
   DollarSign,
   Package,
-  FileText,
-  ExternalLink
+  FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
@@ -351,7 +350,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="flex items-center gap-2 text-gray-700">
                                 <Package className="w-5 h-5 text-blue-600" />
-                                <span className="font-medium">Code: {vendor.productCode}</span>
+                                <span className="font-medium">Code: {vendorSearch.productCode}</span>
                               </div>
                               <div className="flex items-center gap-2 text-gray-700">
                                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -374,7 +373,7 @@ const AdminDashboard = () => {
                                 )}
                                 {vendor.catalogId && vendor.catalogId.pdfFile && (
                                   <button
-                                    onClick={() => handleViewProductPage(vendor.catalogId._id, vendor.productCode)}
+                                    onClick={() => handleViewProductPage(vendor.catalogId._id, vendorSearch.productCode)}
                                     className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
                                   >
                                     <FileText className="w-4 h-4" />

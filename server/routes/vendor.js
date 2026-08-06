@@ -4,11 +4,11 @@ const Vendor = require('../models/Vendor');
 const Catalog = require('../models/Catalog');
 const authMiddleware = require('../middleware/auth');
 
-// Get all vendors for a catalog
-router.get('/catalog/:catalogId', authMiddleware, async (req, res) => {
+// Get all vendors
+router.get('/catalog/all', authMiddleware, async (req, res) => {
   try {
-    const { catalogId } = req.params;
-    const vendors = await Vendor.find({ catalogId, active: true })
+    const vendors = await Vendor.find({ active: true })
+      .populate('catalogId', 'name categoryName')
       .sort({ createdAt: -1 });
     res.json(vendors);
   } catch (error) {
@@ -16,11 +16,11 @@ router.get('/catalog/:catalogId', authMiddleware, async (req, res) => {
   }
 });
 
-// Get all vendors
-router.get('/catalog/all', authMiddleware, async (req, res) => {
+// Get all vendors for a catalog
+router.get('/catalog/:catalogId', authMiddleware, async (req, res) => {
   try {
-    const vendors = await Vendor.find({ active: true })
-      .populate('catalogId', 'name categoryName')
+    const { catalogId } = req.params;
+    const vendors = await Vendor.find({ catalogId, active: true })
       .sort({ createdAt: -1 });
     res.json(vendors);
   } catch (error) {
@@ -34,7 +34,14 @@ router.get('/product/:productCode', async (req, res) => {
     const { productCode } = req.params;
     const { latitude, longitude } = req.query;
     
-    let vendors = await Vendor.find({ productCode, active: true })
+    // Search in both productCode (single) and productCodes (array) fields
+    let vendors = await Vendor.find({ 
+      $or: [
+        { productCode: productCode },
+        { productCodes: productCode }
+      ],
+      active: true 
+    })
       .populate('catalogId', 'name categoryName pdfFile');
     
     // Calculate distances if location is provided
@@ -92,6 +99,8 @@ router.get('/product-codes', async (req, res) => {
 // Create new vendor (admin only)
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Creating vendor with data:', req.body);
+    
     const {
       name,
       phone,
@@ -104,9 +113,37 @@ router.post('/', authMiddleware, async (req, res) => {
       pincode,
       catalogId,
       productCode,
+      productCodes,
       price,
       transportCharges
     } = req.body;
+
+    // Validate required fields
+    if (!name || !phone || !address || !city || !state || !pincode || !catalogId || !price) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        missing: {
+          name: !name,
+          phone: !phone,
+          address: !address,
+          city: !city,
+          state: !state,
+          pincode: !pincode,
+          catalogId: !catalogId,
+          price: !price
+        }
+      });
+    }
+
+    // Ensure at least one product code is available
+    const finalProductCodes = productCodes && productCodes.length > 0 ? productCodes : [productCode];
+    const finalProductCode = productCode || (productCodes && productCodes.length > 0 ? productCodes[0] : '');
+    
+    if (!finalProductCode) {
+      return res.status(400).json({ 
+        message: 'At least one product code is required'
+      });
+    }
 
     // Validate catalog exists
     const catalog = await Catalog.findById(catalogId);
@@ -128,14 +165,17 @@ router.post('/', authMiddleware, async (req, res) => {
       state,
       pincode,
       catalogId,
-      productCode,
+      productCode: finalProductCode,
+      productCodes: finalProductCodes,
       price,
       transportCharges
     });
 
     await vendor.save();
+    console.log('Vendor created successfully:', vendor);
     res.status(201).json(vendor);
   } catch (error) {
+    console.error('Error creating vendor:', error);
     res.status(500).json({ message: 'Error creating vendor', error: error.message });
   }
 });
@@ -154,10 +194,15 @@ router.put('/:id', authMiddleware, async (req, res) => {
       state,
       pincode,
       productCode,
+      productCodes,
       price,
       transportCharges,
       active
     } = req.body;
+
+    // Use productCodes array if provided, otherwise use single productCode
+    const finalProductCodes = productCodes && productCodes.length > 0 ? productCodes : [productCode];
+    const finalProductCode = productCode || (productCodes && productCodes.length > 0 ? productCodes[0] : '');
 
     const vendor = await Vendor.findByIdAndUpdate(
       req.params.id,
@@ -171,7 +216,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
         city,
         state,
         pincode,
-        productCode,
+        productCode: finalProductCode,
+        productCodes: finalProductCodes,
         price,
         transportCharges,
         active
@@ -199,6 +245,16 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.json({ message: 'Vendor deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting vendor', error: error.message });
+  }
+});
+
+// Delete all vendors
+router.delete('/all/delete', authMiddleware, async (req, res) => {
+  try {
+    const result = await Vendor.deleteMany({});
+    res.json({ message: `Deleted ${result.deletedCount} vendors successfully` });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting all vendors', error: error.message });
   }
 });
 

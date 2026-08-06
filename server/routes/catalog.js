@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const Catalog = require('../models/Catalog');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 const fs = require('fs');
 const Tesseract = require('tesseract.js');
 const { PDFDocument } = require('pdf-lib');
@@ -159,15 +159,23 @@ router.post('/pdf', auth, upload.single('pdf'), async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // Parse PDF to extract product information with OCR
     const pdfPath = req.file.path;
-    const extractedProducts = await extractProductsWithOCR(pdfPath);
+    
+    // Get accurate page count using pdf-lib
+    const pdfBytes = fs.readFileSync(pdfPath);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const actualPageCount = pdfDoc.getPageCount();
+    
+    console.log(`PDF actual page count: ${actualPageCount}`);
+    
+    // Parse PDF to extract product information with OCR
+    const extractedProducts = await extractProductsWithOCR(pdfPath, actualPageCount);
 
     res.json({
       message: 'PDF uploaded successfully',
       pdfPath: `/uploads/pdfs/${req.file.filename}`,
       extractedProducts: extractedProducts.products,
-      totalPages: extractedProducts.totalPages,
+      totalPages: actualPageCount, // Use the accurate page count from pdf-lib
       productCodePageMap: extractedProducts.productCodePageMap
     });
   } catch (error) {
@@ -177,19 +185,33 @@ router.post('/pdf', auth, upload.single('pdf'), async (req, res) => {
 });
 
 // Advanced product extraction with OCR and pattern matching
-async function extractProductsWithOCR(pdfPath) {
+async function extractProductsWithOCR(pdfPath, actualPageCount) {
   try {
     // First, try text extraction
     const dataBuffer = fs.readFileSync(pdfPath);
-    const data = await pdfParse(dataBuffer);
+    const data = await PDFParse(dataBuffer);
     
-    // Extract products using text
-    let products = extractProductsFromText(data.text, data.numpages);
+    console.log(`PDF has ${actualPageCount} pages (from pdf-lib)`);
+    console.log(`PDF parse reports ${data.numpages} pages`);
+    console.log(`Extracted text length: ${data.text.length} characters`);
+    
+    // Use the accurate page count from pdf-lib
+    const totalPages = actualPageCount;
+    
+    // Extract products using text with improved pattern matching
+    let products = extractProductsFromText(data.text, totalPages);
+    
+    console.log(`Found ${products.length} products from text extraction`);
+    
+    // Try to improve page number estimation by analyzing page breaks
+    if (totalPages > 1) {
+      products = improvePageNumbers(data.text, products, totalPages);
+    }
     
     // If text extraction didn't find enough products, try OCR
-    if (products.length < data.numpages * 0.5) { // If we found less than 50% of expected products
+    if (products.length < 5 && totalPages > 1) { // If we found very few products
       console.log('Text extraction insufficient, trying OCR...');
-      const ocrProducts = await extractProductsOCR(pdfPath, data.numpages);
+      const ocrProducts = await extractProductsOCR(pdfPath, totalPages);
       
       // Merge results, preferring OCR results
       const productMap = new Map();
@@ -213,22 +235,33 @@ async function extractProductsWithOCR(pdfPath) {
       productCodePageMap[p.code] = p.page;
     });
     
+    console.log(`Final product count: ${products.length}`);
+    console.log(`Product code page map:`, productCodePageMap);
+    
     return {
       products: products.sort((a, b) => a.page - b.page),
-      totalPages: data.numpages,
+      totalPages: totalPages,
       productCodePageMap
     };
     
   } catch (error) {
     console.error('Error in extractProductsWithOCR:', error);
-    // Return fallback data
+    // Return fallback data with actual page count
+    const fallbackPages = actualPageCount || 2;
+    const fallbackProducts = [];
+    for (let i = 1; i <= Math.min(fallbackPages, 2); i++) {
+      fallbackProducts.push({
+        code: `AH-${String(i).padStart(3, '0')}`,
+        name: `Product ${i}`,
+        page: i,
+        price: 0
+      });
+    }
+    
     return {
-      products: [
-        { code: 'AH-001', name: 'Product 1', page: 1, price: 0 },
-        { code: 'AH-002', name: 'Product 2', page: 2, price: 0 }
-      ],
-      totalPages: 2,
-      productCodePageMap: { 'AH-001': 1, 'AH-002': 2 }
+      products: fallbackProducts,
+      totalPages: fallbackPages,
+      productCodePageMap: {}
     };
   }
 }
@@ -250,6 +283,9 @@ function extractProductsFromText(text, totalPages) {
     /([A-Z]{2,4}[-\s]?\d{2,4})/gi
   ];
   
+  // Track seen codes to avoid duplicates
+  const seenCodes = new Set();
+  
   lines.forEach((line, lineIndex) => {
     const trimmedLine = line.trim();
     
@@ -260,14 +296,16 @@ function extractProductsFromText(text, totalPages) {
           // Normalize the code: remove spaces, convert to uppercase
           const normalizedCode = match.toUpperCase().replace(/\s+/g, '');
           
-          // Avoid duplicates
-          if (!products.find(p => p.code === normalizedCode)) {
+          // Avoid duplicates using Set
+          if (!seenCodes.has(normalizedCode)) {
+            seenCodes.add(normalizedCode);
             const pageNumber = estimatePageNumber(lineIndex, lines.length, totalPages);
             products.push({
               code: normalizedCode,
               name: `Product ${normalizedCode}`,
               page: pageNumber,
-              price: 0
+              price: 0,
+              lineIndex: lineIndex
             });
           }
         });
@@ -282,35 +320,44 @@ function extractProductsFromText(text, totalPages) {
 // Extract products using OCR (for image-based PDFs)
 async function extractProductsOCR(pdfPath, totalPages) {
   const products = [];
+  const seenCodes = new Set();
   
   try {
     // Load PDF document
     const pdfBytes = fs.readFileSync(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
     
+    // Create Tesseract worker
+    const { createWorker } = Tesseract;
+    const worker = await createWorker();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+    
     // Process each page with OCR
     for (let i = 0; i < Math.min(totalPages, pdfDoc.getPageCount()); i++) {
       try {
-        // Convert page to image (this would require additional setup)
-        // For now, we'll use a simplified approach
-        const pageText = await extractPageTextWithOCR(pdfPath, i);
+        // Convert page to image using pdf-lib and then to a format Tesseract can process
+        // Note: This requires additional setup with pdf-to-image or similar library
+        // For now, we'll use a simplified approach with text extraction
         
-        // Apply pattern matching to OCR text
-        const pageProducts = extractProductsFromText(pageText, 1);
+        // Since we can't easily convert PDF pages to images without additional dependencies,
+        // we'll rely on the text extraction from pdf-parse which should work for most PDFs
+        // If the PDF is image-based, we'll need to add pdf-to-image or similar
         
-        pageProducts.forEach(p => {
-          p.page = i + 1; // Set actual page number
-          if (!products.find(existing => existing.code === p.code)) {
-            products.push(p);
-          }
-        });
+        console.log(`Processing page ${i + 1}/${totalPages}...`);
         
-        console.log(`Processed page ${i + 1}/${totalPages}, found ${pageProducts.length} products`);
+        // For now, skip OCR per page and rely on global text extraction
+        // In production, you would:
+        // 1. Convert PDF page to image using pdf-to-image
+        // 2. Run Tesseract OCR on the image
+        // 3. Extract product codes from the OCR text
         
       } catch (pageError) {
         console.error(`Error processing page ${i + 1}:`, pageError);
       }
     }
+    
+    await worker.terminate();
     
   } catch (error) {
     console.error('Error in OCR extraction:', error);
@@ -359,6 +406,40 @@ function estimatePageNumber(lineIndex, totalLines, totalPages) {
   const estimatedPage = Math.floor(lineIndex / avgLinesPerPage) + 1;
   
   return Math.min(Math.max(estimatedPage, 1), totalPages);
+}
+
+// Improve page number estimation by analyzing page breaks in the text
+function improvePageNumbers(text, products, totalPages) {
+  if (totalPages <= 1) return products;
+  
+  // Try to find page break markers in the text
+  const lines = text.split('\n');
+  const pageBreaks = [];
+  
+  // Look for common page break patterns
+  lines.forEach((line, index) => {
+    if (line.match(/^Page \d+|^---+|^\f/)) {
+      pageBreaks.push(index);
+    }
+  });
+  
+  // If we found page breaks, use them to better estimate page numbers
+  if (pageBreaks.length > 0) {
+    products.forEach(product => {
+      if (product.lineIndex !== undefined) {
+        // Find which page break interval this product falls into
+        let pageIndex = 0;
+        for (let i = 0; i < pageBreaks.length; i++) {
+          if (product.lineIndex > pageBreaks[i]) {
+            pageIndex = i + 1;
+          }
+        }
+        product.page = Math.min(pageIndex + 1, totalPages);
+      }
+    });
+  }
+  
+  return products;
 }
 
 // Get page number for a specific product code
@@ -410,6 +491,31 @@ router.get('/product-pages/:catalogId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching product pages:', error);
     res.status(500).json({ message: 'Error fetching product pages' });
+  }
+});
+
+// Get all unique product codes from all catalogs
+router.get('/product-codes/all', async (req, res) => {
+  try {
+    const catalogs = await Catalog.find({ products: { $exists: true, $ne: [] } });
+    
+    // Collect all unique product codes from all catalogs
+    const productCodeSet = new Set();
+    catalogs.forEach(catalog => {
+      if (catalog.products && Array.isArray(catalog.products)) {
+        catalog.products.forEach(product => {
+          if (product.code) {
+            productCodeSet.add(product.code);
+          }
+        });
+      }
+    });
+    
+    const productCodes = Array.from(productCodeSet).sort();
+    res.json(productCodes);
+  } catch (error) {
+    console.error('Error fetching all product codes:', error);
+    res.status(500).json({ message: 'Error fetching product codes', error: error.message });
   }
 });
 

@@ -5,8 +5,6 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  Upload, 
-  Search, 
   MapPin, 
   Phone, 
   DollarSign,
@@ -40,6 +38,12 @@ const SuperadminDashboard = () => {
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [currentPDF, setCurrentPDF] = useState(null);
   const [currentProductPage, setCurrentProductPage] = useState(1);
+  
+  // Page-wise product code entry state
+  const [pdfTotalPages, setPdfTotalPages] = useState(0);
+  const [currentPageEntry, setCurrentPageEntry] = useState(1);
+  const [pageProductCodes, setPageProductCodes] = useState({});
+  const [showPageEntryMode, setShowPageEntryMode] = useState(false);
 
   const [catalogFormData, setCatalogFormData] = useState({
     name: '',
@@ -68,7 +72,8 @@ const SuperadminDashboard = () => {
     state: '',
     pincode: '',
     catalogId: '',
-    productCode: '',
+    productCodes: [], // Changed to array for multiple selection
+    productCode: '', // Keep single for backward compatibility
     price: '',
     transportCharges: '0'
   });
@@ -107,10 +112,8 @@ const SuperadminDashboard = () => {
       const categoriesData = await categoriesRes.json();
       setCategories(categoriesData);
 
-      // Fetch product codes
-      const codesRes = await fetch('http://localhost:5002/api/vendor/product-codes', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Fetch product codes from catalogs
+      const codesRes = await fetch('http://localhost:5002/api/catalog/product-codes/all');
       if (codesRes.ok) {
         const codesData = await codesRes.json();
         setProductCodes(codesData);
@@ -122,7 +125,10 @@ const SuperadminDashboard = () => {
       });
       if (vendorsRes.ok) {
         const vendorsData = await vendorsRes.json();
+        console.log('Fetched vendors:', vendorsData);
         setVendors(vendorsData);
+      } else {
+        console.error('Failed to fetch vendors:', await vendorsRes.text());
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -149,6 +155,9 @@ const SuperadminDashboard = () => {
       products: []
     });
     setExtractedProducts([]);
+    setShowPageEntryMode(false);
+    setPdfTotalPages(0);
+    setPageProductCodes({});
     setShowCatalogModal(true);
   };
 
@@ -228,6 +237,8 @@ const SuperadminDashboard = () => {
       const formData = new FormData();
       formData.append('pdf', file);
 
+      console.log('Uploading PDF file:', file.name, file.size);
+
       const response = await fetch('http://localhost:5002/api/catalog/pdf', {
         method: 'POST',
         headers: {
@@ -237,19 +248,103 @@ const SuperadminDashboard = () => {
       });
 
       const data = await response.json();
+      console.log('PDF upload response:', data);
+      
       if (response.ok) {
         setCatalogFormData(prev => ({ ...prev, pdfFile: data.pdfPath }));
         
-        // Use extracted products from server
-        if (data.extractedProducts && data.extractedProducts.length > 0) {
-          setExtractedProducts(data.extractedProducts);
-          setCatalogFormData(prev => ({ ...prev, products: data.extractedProducts }));
+        // Set total pages and switch to page-wise entry mode
+        if (data.totalPages) {
+          console.log('Setting total pages:', data.totalPages);
+          setPdfTotalPages(data.totalPages);
+          setShowPageEntryMode(true);
+          setCurrentPageEntry(1);
+          setPageProductCodes({});
+          
+          // Clear any auto-extracted products since we're doing manual entry
+          setExtractedProducts([]);
+          setCatalogFormData(prev => ({ ...prev, products: [] }));
+        } else {
+          console.error('No totalPages in response:', data);
         }
       } else {
         console.error('PDF upload failed:', data.message);
+        alert(`PDF upload failed: ${data.message}`);
       }
     } catch (error) {
       console.error('Error uploading PDF:', error);
+      alert('Error uploading PDF. Please try again.');
+    }
+  };
+
+  // Handle page-wise product code entry
+  const handlePageCodeEntry = (page, codes) => {
+    setPageProductCodes(prev => ({
+      ...prev,
+      [page]: codes
+    }));
+  };
+
+  // Convert page-wise codes to products array
+  const convertPageCodesToProducts = () => {
+    const products = [];
+    Object.keys(pageProductCodes).forEach(page => {
+      const codes = pageProductCodes[page];
+      if (codes && codes.trim()) {
+        const codeArray = codes.split(',').map(code => code.trim()).filter(code => code);
+        codeArray.forEach(code => {
+          products.push({
+            code: code,
+            name: `Product ${code}`,
+            page: parseInt(page),
+            price: 0
+          });
+        });
+      }
+    });
+    return products.sort((a, b) => a.page - b.page);
+  };
+
+  // Finish page-wise entry and convert to products
+  const handleFinishPageEntry = async () => {
+    const products = convertPageCodesToProducts();
+    setExtractedProducts(products);
+    setCatalogFormData(prev => ({ ...prev, products }));
+    setShowPageEntryMode(false);
+    
+    // Auto-submit the form after a short delay
+    setTimeout(() => {
+      const form = document.querySelector('form[onSubmit]');
+      if (form) {
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    }, 100);
+  };
+
+  // Skip page-wise entry and use auto-extraction
+  const handleSkipPageEntry = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const formData = new FormData();
+      
+      // Re-upload PDF to get auto-extracted products
+      const response = await fetch('http://localhost:5002/api/catalog/pdf', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      if (response.ok && data.extractedProducts) {
+        setExtractedProducts(data.extractedProducts);
+        setCatalogFormData(prev => ({ ...prev, products: data.extractedProducts }));
+      }
+      setShowPageEntryMode(false);
+    } catch (error) {
+      console.error('Error in auto-extraction:', error);
+      setShowPageEntryMode(false);
     }
   };
 
@@ -294,6 +389,12 @@ const SuperadminDashboard = () => {
       if (response.ok) {
         setShowCatalogModal(false);
         fetchData();
+        // Refresh product codes after catalog creation/update
+        const codesRes = await fetch('http://localhost:5002/api/catalog/product-codes/all');
+        if (codesRes.ok) {
+          const codesData = await codesRes.json();
+          setProductCodes(codesData);
+        }
       }
     } catch (error) {
       console.error('Error saving catalog:', error);
@@ -303,6 +404,12 @@ const SuperadminDashboard = () => {
   const handleAddVendor = (catalog) => {
     setSelectedCatalog(catalog);
     setEditingVendor(null);
+    
+    // Auto-select all product codes if available
+    const allProductCodes = catalog.products && catalog.products.length > 0 
+      ? catalog.products.map(product => product.code)
+      : [];
+    
     setVendorFormData({
       name: '',
       phone: '',
@@ -314,7 +421,8 @@ const SuperadminDashboard = () => {
       state: '',
       pincode: '',
       catalogId: catalog._id,
-      productCode: '',
+      productCodes: allProductCodes, // Auto-select all product codes
+      productCode: allProductCodes.length > 0 ? allProductCodes[0] : '', // Keep first for backward compatibility
       price: '',
       transportCharges: '0'
     });
@@ -322,6 +430,12 @@ const SuperadminDashboard = () => {
   };
 
   const handleEditVendor = (vendor) => {
+    // Find the catalog for this vendor
+    const catalog = catalogs.find(c => c._id === vendor.catalogId);
+    if (catalog) {
+      setSelectedCatalog(catalog);
+    }
+    
     setEditingVendor(vendor);
     setVendorFormData({
       name: vendor.name,
@@ -335,6 +449,7 @@ const SuperadminDashboard = () => {
       pincode: vendor.pincode,
       catalogId: vendor.catalogId,
       productCode: vendor.productCode,
+      productCodes: vendor.productCodes || [vendor.productCode], // Handle both old and new format
       price: vendor.price,
       transportCharges: vendor.transportCharges
     });
@@ -359,6 +474,27 @@ const SuperadminDashboard = () => {
     }
   };
 
+  const handleDeleteAllVendors = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL vendors from the database? This action cannot be undone.')) return;
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('http://localhost:5002/api/vendor/all/delete', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message);
+        setVendors([]);
+      }
+    } catch (error) {
+      console.error('Error deleting all vendors:', error);
+      alert('Error deleting all vendors. Please try again.');
+    }
+  };
+
   const handleVendorSubmit = async (e) => {
     e.preventDefault();
 
@@ -369,6 +505,19 @@ const SuperadminDashboard = () => {
         : 'http://localhost:5002/api/vendor';
       
       const method = editingVendor ? 'PUT' : 'POST';
+      
+      // Use the first product code as the primary, but store all selected codes
+      const primaryProductCode = vendorFormData.productCodes.length > 0 
+        ? vendorFormData.productCodes[0] 
+        : vendorFormData.productCode;
+      
+      const vendorData = {
+        ...vendorFormData,
+        productCode: primaryProductCode,
+        productCodes: vendorFormData.productCodes.length > 0 ? vendorFormData.productCodes : [primaryProductCode]
+      };
+
+      console.log('Submitting vendor:', { url, method, data: vendorData });
 
       const response = await fetch(url, {
         method,
@@ -376,15 +525,26 @@ const SuperadminDashboard = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(vendorFormData)
+        body: JSON.stringify(vendorData)
       });
 
+      const data = await response.json();
+      console.log('Vendor submission response:', data);
+
       if (response.ok) {
+        const message = editingVendor 
+          ? 'Vendor updated successfully' 
+          : `Vendor created successfully with ${vendorFormData.productCodes.length} product code(s)`;
+        alert(message);
         setShowVendorModal(false);
         fetchData();
+      } else {
+        console.error('Vendor creation failed:', data);
+        alert(`Error: ${data.message || 'Failed to create vendor'}`);
       }
     } catch (error) {
       console.error('Error saving vendor:', error);
+      alert('Error saving vendor. Please try again.');
     }
   };
 
@@ -418,7 +578,6 @@ const SuperadminDashboard = () => {
     if (link && (link.includes('maps.app.goo.gl') || link.includes('google.com/maps'))) {
       try {
         // For shortened links, we need to resolve them first
-        let resolvedLink = link;
         if (link.includes('maps.app.goo.gl')) {
           // In production, you'd need a backend service to resolve shortened URLs
           // For now, we'll alert the user
@@ -474,7 +633,11 @@ const SuperadminDashboard = () => {
   };
 
   const getVendorsForCatalog = (catalogId) => {
-    return vendors.filter(v => v.catalogId === catalogId);
+    return vendors.filter(v => {
+      // Handle both string and ObjectId comparison
+      const vendorCatalogId = v.catalogId && v.catalogId._id ? v.catalogId._id : v.catalogId;
+      return String(vendorCatalogId) === String(catalogId);
+    });
   };
 
   const handleViewProductPage = async (catalogId, productCode) => {
@@ -552,7 +715,16 @@ const SuperadminDashboard = () => {
             }`}
           >
             <MapPin size={20} />
-            Vendor Management
+            Vendors by Catalog
+          </button>
+          <button
+            onClick={() => setActiveTab('all-vendors')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
+              activeTab === 'all-vendors' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <MapPin size={20} />
+            All Vendors
           </button>
         </div>
 
@@ -636,7 +808,7 @@ const SuperadminDashboard = () => {
           </motion.div>
         )}
 
-        {/* Vendor Management Tab */}
+        {/* Vendor Management Tab - Vendors by Catalog */}
         {activeTab === 'vendors' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -644,7 +816,7 @@ const SuperadminDashboard = () => {
           >
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
-                <h2 className="text-2xl font-bold text-gray-900">Vendor Management</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Vendors by Catalog</h2>
                 <p className="text-gray-600 mt-1">Add and manage vendors for each catalog</p>
               </div>
               
@@ -674,7 +846,7 @@ const SuperadminDashboard = () => {
                         </div>
                         <div className="flex items-center gap-4">
                           <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-bold rounded-full">
-                            {catalogVendors.length} vendors
+                            {catalog.name}: {catalogVendors.length} vendors
                           </span>
                           {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
                         </div>
@@ -706,18 +878,20 @@ const SuperadminDashboard = () => {
                                   <div className="flex justify-between items-start mb-4">
                                     <div>
                                       <h5 className="font-bold text-gray-900 text-lg">{vendor.name}</h5>
-                                      <p className="text-sm text-gray-600">{vendor.productCode}</p>
+                                      <p className="text-sm text-gray-600">{vendor.city}, {vendor.state}</p>
                                     </div>
                                     <div className="flex gap-2">
                                       <button
                                         onClick={() => handleEditVendor(vendor)}
                                         className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                                        title="Edit Vendor"
                                       >
                                         <Edit size={18} />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteVendor(vendor._id)}
                                         className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
+                                        title="Delete Vendor"
                                       >
                                         <Trash2 size={18} />
                                       </button>
@@ -731,7 +905,7 @@ const SuperadminDashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <MapPin size={16} className="text-blue-600" />
-                                      <span>{vendor.address}, {vendor.city}</span>
+                                      <span className="truncate">{vendor.address}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <DollarSign size={16} className="text-green-600" />
@@ -739,6 +913,34 @@ const SuperadminDashboard = () => {
                                       {vendor.transportCharges > 0 && (
                                         <span className="text-gray-500">+ ₹{vendor.transportCharges} transport</span>
                                       )}
+                                    </div>
+                                    
+                                    {/* Product Codes Display */}
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Package size={16} className="text-purple-600" />
+                                        <span className="font-medium text-gray-700">
+                                          Product Codes ({vendor.productCodes?.length || 1})
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {vendor.productCodes && vendor.productCodes.length > 0 ? (
+                                          vendor.productCodes.slice(0, 6).map((code, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                              {code}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                            {vendor.productCode}
+                                          </span>
+                                        )}
+                                        {vendor.productCodes && vendor.productCodes.length > 6 && (
+                                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                            +{vendor.productCodes.length - 6} more
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -750,6 +952,175 @@ const SuperadminDashboard = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* All Vendors Tab */}
+        {activeTab === 'all-vendors' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">All Vendors</h2>
+                  <p className="text-gray-600 mt-1">Manage vendor information across all catalogs</p>
+                </div>
+                <button
+                  onClick={handleDeleteAllVendors}
+                  className="flex items-center gap-2 bg-red-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg"
+                >
+                  <Trash2 size={20} />
+                  Delete All Vendors
+                </button>
+              </div>
+              <div className="p-6">
+                {catalogs.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-xl">
+                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No catalogs available</p>
+                    <p className="text-gray-400 mt-2">Create catalogs first to add vendors</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {catalogs.map(catalog => {
+                      const catalogVendors = vendors.filter(v => {
+                        // Handle both string and ObjectId comparison
+                        const vendorCatalogId = v.catalogId && v.catalogId._id ? v.catalogId._id : v.catalogId;
+                        return String(vendorCatalogId) === String(catalog._id);
+                      });
+                      // Show all catalogs, even those with 0 vendors
+                      
+                      return (
+                        <div key={catalog._id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                          <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              {catalog.image && (
+                                <img 
+                                  src={catalog.image?.startsWith('/uploads') ? `http://localhost:5002${catalog.image}` : catalog.image}
+                                  alt={catalog.name}
+                                  className="w-12 h-12 object-cover rounded-lg"
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-bold text-gray-900 text-lg">{catalog.name}</h3>
+                                <p className="text-sm text-gray-600">{catalog.categoryName}</p>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-bold rounded-full">
+                              {catalog.name}: {catalogVendors.length} vendors
+                            </span>
+                          </div>
+                          
+                          <div className="p-6">
+                            {catalogVendors.length === 0 ? (
+                              <div className="text-center py-8 bg-gray-50 rounded-xl">
+                                <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-500">No vendors for this catalog</p>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {catalogVendors.map(vendor => (
+                                <div key={vendor._id} className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-white hover:shadow-lg transition-all">
+                                  {/* Header with vendor name and catalog badge */}
+                                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 border-b border-purple-200">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <h5 className="font-bold text-gray-900 text-lg mb-1">{vendor.name}</h5>
+                                        <div className="flex items-center gap-2">
+                                          <Package size={14} className="text-purple-600" />
+                                          <span className="text-sm font-medium text-purple-700">{catalog.name}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedCatalog(catalog);
+                                            handleEditVendor(vendor);
+                                          }}
+                                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                                          title="Edit Vendor"
+                                        >
+                                          <Edit size={18} />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteVendor(vendor._id)}
+                                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
+                                          title="Delete Vendor"
+                                        >
+                                          <Trash2 size={18} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Vendor details */}
+                                  <div className="p-5 space-y-3 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-700">
+                                      <Phone size={16} className="text-green-600" />
+                                      <span className="font-medium">{vendor.phone}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-700">
+                                      <MapPin size={16} className="text-blue-600" />
+                                      <span className="truncate">{vendor.address}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-700">
+                                      <DollarSign size={16} className="text-green-600" />
+                                      <span className="font-bold text-green-700">₹{vendor.price}</span>
+                                      {vendor.transportCharges > 0 && (
+                                        <span className="text-gray-500">+ ₹{vendor.transportCharges} transport</span>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Product Codes Display */}
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Package size={16} className="text-purple-600" />
+                                        <span className="font-medium text-gray-700">
+                                          Product Codes ({vendor.productCodes?.length || 1})
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {vendor.productCodes && vendor.productCodes.length > 0 ? (
+                                          vendor.productCodes.slice(0, 6).map((code, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                              {code}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                            {vendor.productCode}
+                                          </span>
+                                        )}
+                                        {vendor.productCodes && vendor.productCodes.length > 6 && (
+                                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                            +{vendor.productCodes.length - 6} more
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {catalogs.length > 0 && vendors.filter(v => catalogs.some(c => c._id === v.catalogId)).length === 0 && (
+                      <div className="text-center py-12 bg-gray-50 rounded-xl">
+                        <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 text-lg">No vendors added yet</p>
+                        <p className="text-gray-400 mt-2">Go to Catalogs tab to add vendors</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -899,8 +1270,72 @@ const SuperadminDashboard = () => {
                   </div>
                 </div>
 
+                {/* Page-wise Product Code Entry */}
+                {showPageEntryMode && (
+                  <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        Add Product Codes Page-wise (PDF has {pdfTotalPages} pages)
+                      </h3>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSkipPageEntry}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all text-sm"
+                        >
+                          Skip & Auto-extract
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFinishPageEntry}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"
+                        >
+                          Finish & Create Catalog
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {Array.from({ length: pdfTotalPages }, (_, i) => i + 1).map(pageNum => (
+                        <div key={pageNum} className="bg-white p-4 rounded-lg border">
+                          <div className="flex items-center gap-4 mb-2">
+                            <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                              {pageNum}
+                            </span>
+                            <label className="flex-1 font-medium text-gray-900">
+                              Product Codes for Page {pageNum}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentPDF(`http://localhost:5002${catalogFormData.pdfFile}`);
+                                setCurrentProductPage(pageNum);
+                                setShowPDFViewer(true);
+                              }}
+                              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              <FileText size={16} />
+                              View Page
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            value={pageProductCodes[pageNum] || ''}
+                            onChange={(e) => handlePageCodeEntry(pageNum, e.target.value)}
+                            placeholder="Enter product codes separated by commas (e.g., AH-001, AH-002, DNO-01)"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Separate multiple codes with commas. Codes will be assigned to page {pageNum}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Extracted Products Section */}
-                {extractedProducts.length > 0 && (
+                {extractedProducts.length > 0 && !showPageEntryMode && (
                   <div className="bg-gray-50 rounded-xl p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">Extracted Products from PDF</h3>
                     <div className="space-y-3">
@@ -961,9 +1396,14 @@ const SuperadminDashboard = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-lg"
+                    disabled={showPageEntryMode}
+                    className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                      showPageEntryMode 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 hover:from-yellow-500 hover:to-yellow-600'
+                    }`}
                   >
-                    {editingCatalog ? 'Update Catalog' : 'Create Catalog'}
+                    {showPageEntryMode ? 'Complete Page Entry First' : (editingCatalog ? 'Update Catalog' : 'Create Catalog')}
                   </button>
                 </div>
               </form>
@@ -1105,37 +1545,84 @@ const SuperadminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Product Code</label>
-                  <div className="space-y-2">
-                    <select
-                      value={vendorFormData.productCode}
-                      onChange={(e) => setVendorFormData({ ...vendorFormData, productCode: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                      required
-                    >
-                      <option value="">Select Product Code</option>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Product Codes from Catalog</label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        id="selectAllProducts"
+                        checked={selectedCatalog && selectedCatalog.products && 
+                          vendorFormData.productCodes.length === selectedCatalog.products.length}
+                        onChange={(e) => {
+                          if (e.target.checked && selectedCatalog && selectedCatalog.products) {
+                            setVendorFormData({
+                              ...vendorFormData,
+                              productCodes: selectedCatalog.products.map(p => p.code)
+                            });
+                          } else {
+                            setVendorFormData({
+                              ...vendorFormData,
+                              productCodes: []
+                            });
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                      />
+                      <label htmlFor="selectAllProducts" className="text-sm font-medium text-gray-700">
+                        Select All Products ({selectedCatalog && selectedCatalog.products ? selectedCatalog.products.length : 0})
+                      </label>
+                    </div>
+                    
+                    <div className="max-h-48 overflow-y-auto border-2 border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
                       {selectedCatalog && selectedCatalog.products && selectedCatalog.products.length > 0 ? (
                         selectedCatalog.products.map((product, index) => (
-                          <option key={index} value={product.code}>
-                            {product.code} - {product.name || 'Product'} (Page {product.page}) - ₹{product.price || 0}
-                          </option>
+                          <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors">
+                            <input
+                              type="checkbox"
+                              id={`product-${index}`}
+                              checked={vendorFormData.productCodes.includes(product.code)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setVendorFormData({
+                                    ...vendorFormData,
+                                    productCodes: [...vendorFormData.productCodes, product.code]
+                                  });
+                                } else {
+                                  setVendorFormData({
+                                    ...vendorFormData,
+                                    productCodes: vendorFormData.productCodes.filter(code => code !== product.code)
+                                  });
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                            />
+                            <label htmlFor={`product-${index}`} className="flex-1 text-sm cursor-pointer">
+                              <span className="font-medium text-gray-900">{product.code}</span>
+                              <span className="text-gray-600 ml-2">
+                                {product.name || 'Product'} (Page {product.page})
+                              </span>
+                            </label>
+                            {selectedCatalog.pdfFile && (
+                              <button
+                                type="button"
+                                onClick={() => handleViewProductPage(selectedCatalog._id, product.code)}
+                                className="text-blue-600 hover:text-blue-800 text-xs"
+                              >
+                                <FileText size={14} />
+                              </button>
+                            )}
+                          </div>
                         ))
                       ) : (
-                        productCodes.map(code => (
-                          <option key={code} value={code}>{code}</option>
-                        ))
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          No products available in this catalog
+                        </p>
                       )}
-                    </select>
-                    {selectedCatalog && selectedCatalog.pdfFile && vendorFormData.productCode && (
-                      <button
-                        type="button"
-                        onClick={() => handleViewProductPage(selectedCatalog._id, vendorFormData.productCode)}
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        <FileText size={14} className="inline mr-1" />
-                        View product page in PDF
-                      </button>
-                    )}
+                    </div>
+                    
+                    <p className="text-xs text-gray-500">
+                      {vendorFormData.productCodes.length} product code(s) will be stored with this vendor
+                    </p>
                   </div>
                 </div>
 

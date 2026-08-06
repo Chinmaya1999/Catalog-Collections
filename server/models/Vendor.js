@@ -60,6 +60,11 @@ const vendorSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  productCodes: {
+    type: [String],
+    default: [],
+    required: false
+  },
   price: {
     type: Number,
     required: true
