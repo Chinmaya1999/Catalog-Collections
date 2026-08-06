@@ -100,6 +100,9 @@ jobs:
               sudo usermod -aG docker $USER || true
             fi
             
+            # Update AWS security group to allow HTTPS traffic
+            echo "Note: Ensure your AWS security group allows inbound traffic on ports 80 (HTTP) and 443 (HTTPS)"
+            
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found. Creating directory and cloning repository..."
@@ -121,6 +124,31 @@ jobs:
             # Pull latest images
             sudo docker pull awsmallick1999/catalog-server:latest
             sudo docker pull awsmallick1999/catalog-client:latest
+            
+            # Setup SSL certificates if not already present
+            if [ ! -d "/etc/letsencrypt/live/catalog.adihuman.com" ]; then
+              echo "Setting up SSL certificates..."
+              # Install Certbot if not present
+              sudo yum install -y certbot || sudo apt-get install -y certbot
+              
+              # Stop any existing frontend to free port 80
+              sudo docker stop frontend || true
+              
+              # Obtain SSL certificates for both domains
+              sudo certbot certonly --standalone \
+                --email "pradipta@uuoinnovation.com" \
+                --agree-tos \
+                --no-eff-email \
+                -d catalog.adihuman.com \
+                -d api.adihuman.com \
+                --non-interactive || echo "SSL certificate setup failed, continuing without SSL"
+            fi
+            
+            # Setup automatic SSL certificate renewal
+            (crontab -l 2>/dev/null | grep -v "certbot renew" || true; echo "0 0 * * 0 certbot renew --quiet && docker restart frontend") | crontab -
+            
+            # Note: Update AWS security group to allow port 443
+            echo "IMPORTANT: Add port 443 to your AWS security group inbound rules"
             
             # Create .env file from GitHub secret
             echo "${{ secrets.ENV_FILE }}" > .env
@@ -145,7 +173,9 @@ jobs:
             sudo docker run -d \
               --name frontend \
               --network catalog-network \
-              -p 3000:80 \
+              -p 80:80 \
+              -p 443:443 \
+              -v /etc/letsencrypt:/etc/letsencrypt:ro \
               awsmallick1999/catalog-client:latest
             
             # Clean up unused images
@@ -177,5 +207,5 @@ jobs:
             # Pull previous stable versions if tagged
             sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
             sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5001:5001 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
-            sudo docker run -d --name frontend --network catalog-network -p 3000:80 awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
+            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5002:5002 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
+            sudo docker run -d --name frontend --network catalog-network -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
