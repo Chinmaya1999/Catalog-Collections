@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink } from 'lucide-react';
+import { getPdfUrl } from '../config/api';
 
 const PDFViewer = ({ pdfUrl, driveUrl, catalog, initialPage = 1, onClose }) => {
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -9,18 +10,16 @@ const PDFViewer = ({ pdfUrl, driveUrl, catalog, initialPage = 1, onClose }) => {
   const iframeRef = useRef(null);
 
   // Determine the PDF URL to use
-  const getPdfUrl = () => {
+  const getFinalPdfUrl = () => {
     if (pdfUrl) return pdfUrl;
     if (catalog?.pdfFile) {
-      return catalog.pdfFile.startsWith('/uploads') 
-        ? `http://localhost:5002${catalog.pdfFile}` 
-        : catalog.pdfFile;
+      return getPdfUrl(catalog.pdfFile);
     }
     if (driveUrl) return driveUrl;
     return null;
   };
 
-  const finalPdfUrl = getPdfUrl();
+  const finalPdfUrl = getFinalPdfUrl();
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {

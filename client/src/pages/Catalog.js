@@ -2,6 +2,7 @@ import React, { useState, memo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ExternalLink } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
+import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
 const Catalog = memo(() => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -18,14 +19,14 @@ const Catalog = memo(() => {
   const fetchDynamicData = async () => {
     try {
       // Fetch catalogs
-      const catalogsRes = await fetch('http://localhost:5002/api/catalog');
+      const catalogsRes = await fetch(API_ENDPOINTS.catalog);
       if (catalogsRes.ok) {
         const catalogsData = await catalogsRes.json();
         setCatalogs(catalogsData);
       }
 
       // Fetch categories
-      const categoriesRes = await fetch('http://localhost:5002/api/category');
+      const categoriesRes = await fetch(API_ENDPOINTS.category);
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
         setCategories(categoriesData);
@@ -181,7 +182,7 @@ const Catalog = memo(() => {
                             </span>
                           )}
                           <img 
-                            src={catalog.image?.startsWith('/uploads') ? `http://localhost:5002${catalog.image}` : catalog.image} 
+                            src={getImageUrl(catalog.image)} 
                             alt={catalog.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />

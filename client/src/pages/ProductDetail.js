@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Heart, Share2, Star, Leaf, Check, ArrowLeft, Truck, Shield, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -14,7 +15,7 @@ const ProductDetail = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`http://localhost:5002/api/products/${id}`);
+        const response = await axios.get(`${API_BASE_URL}/api/products/${id}`);
         setProduct(response.data);
       } catch (error) {
         console.error('Error fetching product:', error);

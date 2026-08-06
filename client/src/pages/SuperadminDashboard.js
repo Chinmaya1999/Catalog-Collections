@@ -17,6 +17,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
+import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 
 const SuperadminDashboard = () => {
   const navigate = useNavigate();
@@ -104,24 +105,24 @@ const SuperadminDashboard = () => {
       const token = localStorage.getItem('adminToken');
       
       // Fetch catalogs
-      const catalogsRes = await fetch('http://localhost:5002/api/catalog');
+      const catalogsRes = await fetch(API_ENDPOINTS.catalog);
       const catalogsData = await catalogsRes.json();
       setCatalogs(catalogsData);
 
       // Fetch categories
-      const categoriesRes = await fetch('http://localhost:5002/api/category');
+      const categoriesRes = await fetch(API_ENDPOINTS.category);
       const categoriesData = await categoriesRes.json();
       setCategories(categoriesData);
 
       // Fetch product codes from catalogs
-      const codesRes = await fetch('http://localhost:5002/api/catalog/product-codes/all');
+      const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
       if (codesRes.ok) {
         const codesData = await codesRes.json();
         setProductCodes(codesData);
       }
 
       // Fetch all vendors
-      const vendorsRes = await fetch('http://localhost:5002/api/vendor/catalog/all', {
+      const vendorsRes = await fetch(`${API_ENDPOINTS.vendor}/catalog/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (vendorsRes.ok) {
@@ -188,7 +189,7 @@ const SuperadminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5002/api/catalog/${id}`, {
+      const response = await fetch(`${API_ENDPOINTS.catalog}/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -212,7 +213,7 @@ const SuperadminDashboard = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('http://localhost:5002/api/catalog/image', {
+      const response = await fetch(`${API_ENDPOINTS.catalog}/image`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -240,7 +241,7 @@ const SuperadminDashboard = () => {
 
       console.log('Uploading PDF file:', file.name, file.size);
 
-      const response = await fetch('http://localhost:5002/api/catalog/pdf', {
+      const response = await fetch(`${API_ENDPOINTS.catalog}/pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -360,7 +361,7 @@ const SuperadminDashboard = () => {
       const formData = new FormData();
       
       // Re-upload PDF to get auto-extracted products
-      const response = await fetch('http://localhost:5002/api/catalog/pdf', {
+      const response = await fetch(`${API_ENDPOINTS.catalog}/pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -386,8 +387,8 @@ const SuperadminDashboard = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const url = editingCatalog 
-        ? `http://localhost:5002/api/catalog/${editingCatalog._id}`
-        : 'http://localhost:5002/api/catalog';
+        ? `${API_ENDPOINTS.catalog}/${editingCatalog._id}`
+        : API_ENDPOINTS.catalog;
       
       const method = editingCatalog ? 'PUT' : 'POST';
 
@@ -422,7 +423,7 @@ const SuperadminDashboard = () => {
         setShowCatalogModal(false);
         fetchData();
         // Refresh product codes after catalog creation/update
-        const codesRes = await fetch('http://localhost:5002/api/catalog/product-codes/all');
+        const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
         if (codesRes.ok) {
           const codesData = await codesRes.json();
           setProductCodes(codesData);
@@ -493,7 +494,7 @@ const SuperadminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:5002/api/vendor/${vendorId}`, {
+      const response = await fetch(`${API_ENDPOINTS.vendor}/${vendorId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -511,7 +512,7 @@ const SuperadminDashboard = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5002/api/vendor/all/delete', {
+      const response = await fetch(`${API_ENDPOINTS.vendor}/all/delete`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -533,8 +534,8 @@ const SuperadminDashboard = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const url = editingVendor 
-        ? `http://localhost:5002/api/vendor/${editingVendor._id}`
-        : 'http://localhost:5002/api/vendor';
+        ? `${API_ENDPOINTS.vendor}/${editingVendor._id}`
+        : API_ENDPOINTS.vendor;
       
       const method = editingVendor ? 'PUT' : 'POST';
       
@@ -696,11 +697,11 @@ const SuperadminDashboard = () => {
 
   const handleViewProductPage = async (catalogId, productCode) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/catalog/product-page/${catalogId}/${productCode}`);
+      const response = await fetch(`${API_ENDPOINTS.catalog}/product-page/${catalogId}/${productCode}`);
       const data = await response.json();
       
       if (response.ok) {
-        setCurrentPDF(`http://localhost:5002${data.pdfFile}`);
+        setCurrentPDF(getPdfUrl(data.pdfFile));
         setCurrentProductPage(data.page);
         setShowPDFViewer(true);
       } else {
@@ -708,7 +709,7 @@ const SuperadminDashboard = () => {
         // Fallback: just open the PDF at page 1
         const catalog = catalogs.find(c => c._id === catalogId);
         if (catalog && catalog.pdfFile) {
-          setCurrentPDF(`http://localhost:5002${catalog.pdfFile}`);
+          setCurrentPDF(getPdfUrl(catalog.pdfFile));
           setCurrentProductPage(1);
           setShowPDFViewer(true);
         }
@@ -812,7 +813,7 @@ const SuperadminDashboard = () => {
                   >
                     <div className="relative h-48">
                       <img 
-                        src={`http://localhost:5002${catalog.image}`} 
+                        src={getImageUrl(catalog.image)} 
                         alt={catalog.name}
                         className="w-full h-full object-cover"
                       />
@@ -888,7 +889,7 @@ const SuperadminDashboard = () => {
                         <div className="flex items-center gap-4">
                           {catalog.image && (
                             <img 
-                              src={`http://localhost:5002${catalog.image}`} 
+                              src={getImageUrl(catalog.image)} 
                               alt={catalog.name}
                               className="w-16 h-16 object-cover rounded-xl shadow-sm"
                             />
@@ -1054,7 +1055,7 @@ const SuperadminDashboard = () => {
                             <div className="flex items-center gap-4">
                               {catalog.image && (
                                 <img 
-                                  src={catalog.image?.startsWith('/uploads') ? `http://localhost:5002${catalog.image}` : catalog.image}
+                                  src={getImageUrl(catalog.image)}
                                   alt={catalog.name}
                                   className="w-12 h-12 object-cover rounded-lg"
                                 />
@@ -1293,7 +1294,7 @@ const SuperadminDashboard = () => {
                       />
                       {catalogFormData.image && (
                         <img 
-                          src={`http://localhost:5002${catalogFormData.image}`} 
+                          src={getImageUrl(catalogFormData.image)} 
                           alt="Preview"
                           className="w-16 h-16 object-cover rounded-xl"
                         />
@@ -1311,7 +1312,7 @@ const SuperadminDashboard = () => {
                       />
                       {catalogFormData.pdfFile && (
                         <a 
-                          href={`http://localhost:5002${catalogFormData.pdfFile}`}
+                          href={getPdfUrl(catalogFormData.pdfFile)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
@@ -1391,7 +1392,7 @@ const SuperadminDashboard = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                setCurrentPDF(`http://localhost:5002${catalogFormData.pdfFile}`);
+                                setCurrentPDF(getPdfUrl(catalogFormData.pdfFile));
                                 setCurrentProductPage(pageNum);
                                 setShowPDFViewer(true);
                               }}

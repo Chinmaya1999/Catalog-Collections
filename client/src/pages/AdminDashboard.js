@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
+import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('catalogs');
@@ -60,7 +61,7 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       // Fetch catalogs
-      const catalogsRes = await fetch('http://localhost:5002/api/catalog');
+      const catalogsRes = await fetch(API_ENDPOINTS.catalog);
       const catalogsData = await catalogsRes.json();
       setCatalogs(catalogsData);
     } catch (error) {
@@ -102,7 +103,7 @@ const AdminDashboard = () => {
 
     try {
       const { productCode, latitude, longitude } = vendorSearch;
-      let url = `http://localhost:5002/api/vendor/product/${productCode}`;
+      let url = `${API_ENDPOINTS.vendor}/product/${productCode}`;
       
       // Always include location if available
       if (userLocation.latitude && userLocation.longitude) {
@@ -131,11 +132,11 @@ const AdminDashboard = () => {
 
   const handleViewProductPage = async (catalogId, productCode) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/catalog/product-page/${catalogId}/${productCode}`);
+      const response = await fetch(`${API_ENDPOINTS.catalog}/product-page/${catalogId}/${productCode}`);
       const data = await response.json();
       
       if (response.ok) {
-        setCurrentPDF(`http://localhost:5002${data.pdfFile}`);
+        setCurrentPDF(getPdfUrl(data.pdfFile));
         setCurrentProductPage(data.page);
         setShowPDFViewer(true);
       } else {
@@ -144,7 +145,7 @@ const AdminDashboard = () => {
         if (searchResults.length > 0 && searchResults[0].catalogId) {
           const catalog = searchResults[0].catalogId;
           if (catalog.pdfFile) {
-            setCurrentPDF(`http://localhost:5002${catalog.pdfFile}`);
+            setCurrentPDF(getPdfUrl(catalog.pdfFile));
             setCurrentProductPage(1);
             setShowPDFViewer(true);
           }
@@ -217,7 +218,7 @@ const AdminDashboard = () => {
                   >
                     <div className="relative h-48">
                       <img 
-                        src={`http://localhost:5002${catalog.image}`} 
+                        src={getImageUrl(catalog.image)} 
                         alt={catalog.name}
                         className="w-full h-full object-cover"
                       />

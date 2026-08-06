@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Grid, List, Search, SlidersHorizontal, Star, Leaf, Sparkles } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const Catalog = () => {
   const [searchParams] = useSearchParams();
@@ -24,15 +25,15 @@ const Catalog = () => {
     const fetchData = async () => {
       try {
         const [productsRes, catalogsRes, categoriesRes] = await Promise.all([
-          axios.get('http://localhost:5002/api/products', {
+          axios.get(`${API_BASE_URL}/api/products`, {
             params: {
               catalog: catalogSlug,
               featured,
               ecoFriendly
             }
           }),
-          axios.get('http://localhost:5002/api/catalogs'),
-          axios.get('http://localhost:5002/api/categories')
+          axios.get(`${API_BASE_URL}/api/catalogs`),
+          axios.get(`${API_BASE_URL}/api/categories`)
         ]);
 
         setProducts(productsRes.data);

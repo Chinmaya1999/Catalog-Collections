@@ -7,7 +7,10 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://api.adihuman.com', 'http://localhost:3000', 'http://localhost:5002'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Gift, ExternalLink } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
+import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
 const Home = memo(() => {
   const [selectedCatalog, setSelectedCatalog] = useState(null);
@@ -17,14 +18,14 @@ const Home = memo(() => {
   const fetchDynamicData = async () => {
     try {
       // Fetch catalogs
-      const catalogsRes = await fetch('http://localhost:5002/api/catalog');
+      const catalogsRes = await fetch(API_ENDPOINTS.catalog);
       if (catalogsRes.ok) {
         const catalogsData = await catalogsRes.json();
         setCatalogs(catalogsData);
       }
 
       // Fetch products (using catalogs with type 'product')
-      const productsRes = await fetch('http://localhost:5002/api/catalog');
+      const productsRes = await fetch(API_ENDPOINTS.catalog);
       if (productsRes.ok) {
         const allData = await productsRes.json();
         setProducts(allData.filter(item => item.type === 'product'));
@@ -154,7 +155,7 @@ const Home = memo(() => {
                         </span>
                       )}
                       <img 
-                        src={catalog.image?.startsWith('/uploads') ? `http://localhost:5002${catalog.image}` : catalog.image} 
+                        src={getImageUrl(catalog.image)} 
                         alt={catalog.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
@@ -214,7 +215,7 @@ const Home = memo(() => {
                         </span>
                       )}
                       <img 
-                        src={product.image?.startsWith('/uploads') ? `http://localhost:5002${product.image}` : product.image} 
+                        src={getImageUrl(product.image)} 
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />

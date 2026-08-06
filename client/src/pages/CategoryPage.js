@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Grid, List, Star, Leaf } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const CategoryPage = () => {
   const { slug } = useParams();
@@ -15,8 +16,8 @@ const CategoryPage = () => {
     const fetchData = async () => {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          axios.get('http://localhost:5002/api/products'),
-          axios.get('http://localhost:5002/api/categories')
+          axios.get(`${API_BASE_URL}/api/products`),
+          axios.get(`${API_BASE_URL}/api/categories`)
         ]);
 
         const currentCategory = categoriesRes.data.find(cat => cat.slug === slug);
