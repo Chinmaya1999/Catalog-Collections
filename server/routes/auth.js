@@ -30,9 +30,9 @@ router.post('/register', [
     const admin = new Admin({ username, email, password });
     await admin.save();
 
-    // Generate token
+    // Generate token (include role)
     const token = jwt.sign(
-      { id: admin._id },
+      { id: admin._id, role: admin.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -43,7 +43,8 @@ router.post('/register', [
       admin: {
         id: admin._id,
         username: admin.username,
-        email: admin.email
+        email: admin.email,
+        role: admin.role
       }
     });
   } catch (error) {
@@ -66,20 +67,23 @@ router.post('/login', [
     const { email, password } = req.body;
 
     // Find admin by email
+    console.log('Login attempt for email:', email);
     const admin = await Admin.findOne({ email });
+    console.log('Found admin:', !!admin);
     if (!admin) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await admin.comparePassword(password);
+    console.log('Password match:', isMatch);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
+    // Generate token (include role)
     const token = jwt.sign(
-      { id: admin._id },
+      { id: admin._id, role: admin.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -90,7 +94,8 @@ router.post('/login', [
       admin: {
         id: admin._id,
         username: admin.username,
-        email: admin.email
+        email: admin.email,
+        role: admin.role
       }
     });
   } catch (error) {
@@ -106,7 +111,8 @@ router.get('/me', auth, async (req, res) => {
       admin: {
         id: req.admin._id,
         username: req.admin.username,
-        email: req.admin.email
+        email: req.admin.email,
+        role: req.admin.role
       }
     });
   } catch (error) {

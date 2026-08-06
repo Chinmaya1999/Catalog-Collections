@@ -11,6 +11,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const About = lazy(() => import('./pages/About'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -36,6 +37,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/superadmin/dashboard" element={<SuperadminDashboard />} />
             </Routes>
           </Suspense>
         </main>

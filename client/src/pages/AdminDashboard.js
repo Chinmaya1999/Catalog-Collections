@@ -45,6 +45,19 @@ const AdminDashboard = () => {
       navigate('/admin/login');
       return;
     }
+    // If superadmin, redirect to superadmin dashboard
+    const info = localStorage.getItem('adminInfo');
+    if (info) {
+      try {
+        const admin = JSON.parse(info);
+        if (admin.role === 'superadmin') {
+          navigate('/superadmin/dashboard');
+          return;
+        }
+      } catch (err) {
+        // ignore parse errors
+      }
+    }
     fetchData();
   }, [navigate]);
 

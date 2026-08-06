@@ -17,6 +17,7 @@ router.get('/dashboard', auth, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(5)
       .populate('category', 'name');
+      
 
     res.json({
       statistics: {

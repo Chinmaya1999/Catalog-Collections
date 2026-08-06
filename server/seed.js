@@ -18,12 +18,28 @@ const seedDatabase = async () => {
       const admin = new Admin({
         username: 'admin',
         email: 'admin@adihuman.com',
-        password: 'admin123'
+        password: 'admin123',
+        role: 'admin'
       });
       await admin.save();
       console.log('Default admin created: admin@adihuman.com / admin123');
     } else {
       console.log('Admin already exists');
+    }
+
+    // Create default superadmin if not exists
+    const existingSuper = await Admin.findOne({ email: 'superadmin@adihuman.com' });
+    if (!existingSuper) {
+      const superadmin = new Admin({
+        username: 'superadmin',
+        email: 'superadmin@adihuman.com',
+        password: 'superadmin123',
+        role: 'superadmin'
+      });
+      await superadmin.save();
+      console.log('Default superadmin created: superadmin@adihuman.com / superadmin123');
+    } else {
+      console.log('Superadmin already exists');
     }
 
     // Create default categories if not exist

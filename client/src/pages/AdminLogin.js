@@ -40,7 +40,12 @@ const AdminLogin = () => {
         localStorage.setItem('adminInfo', JSON.stringify(data.admin));
         // Dispatch custom event to notify navbar about login
         window.dispatchEvent(new Event('adminAuthChange'));
-        navigate('/admin/dashboard');
+        // Redirect based on role
+        if (data.admin && data.admin.role === 'superadmin') {
+          navigate('/superadmin/dashboard');
+        } else {
+          navigate('/admin/dashboard');
+        }
       } else {
         setError(data.message || 'Login failed');
       }
