@@ -85,9 +85,16 @@ jobs:
             # Use ec2-user's home directory instead of root
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             
+            # Install git if not available
+            if ! command -v git &> /dev/null; then
+              echo "Git not found. Installing git..."
+              sudo yum install -y git || sudo apt-get install -y git
+            fi
+            
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Project directory not found. Cloning repository..."
+              echo "Project directory not found. Creating directory and cloning repository..."
+              mkdir -p /home/ec2-user
               cd /home/ec2-user
               git clone https://github.com/Chinmaya1999/Catalog-Collections.git
             fi
@@ -96,7 +103,7 @@ jobs:
             cd $PROJECT_DIR || exit 1
             
             # Pull latest changes
-            git pull origin master
+            git pull origin main
             
             # Stop and remove old containers
             sudo docker stop frontend backend || true
