@@ -24,12 +24,14 @@ const authRoutes = require('./routes/auth');
 const catalogRoutes = require('./routes/catalog');
 const categoryRoutes = require('./routes/category');
 const adminRoutes = require('./routes/admin');
+const vendorRoutes = require('./routes/vendor');
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/catalog', catalogRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/vendor', vendorRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -57,10 +57,27 @@ const catalogSchema = new mongoose.Schema({
     default: 0
   },
   products: [{
-    code: String,
-    name: String,
-    page: Number
+    code: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      default: ''
+    },
+    page: {
+      type: Number,
+      required: true
+    },
+    price: {
+      type: Number,
+      default: 0
+    }
   }],
+  productCodePageMap: {
+    type: Object,
+    default: {}
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "axios": "^1.5.0",
+    "clsx": "^2.0.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.284.0",
+    "pdf-parse": "^2.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.15.0",
-    "axios": "^1.5.0",
-    "framer-motion": "^10.16.4",
-    "lucide-react": "^0.284.0",
-    "clsx": "^2.0.0",
     "tailwind-merge": "^1.14.0"
   },
   "scripts": {
@@ -36,9 +37,9 @@
     ]
   },
   "devDependencies": {
-    "react-scripts": "5.0.1",
-    "tailwindcss": "^3.3.3",
     "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.29"
+    "postcss": "^8.4.29",
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.3.3"
   }
 }
