@@ -8,7 +8,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['https://api.adihuman.com', 'http://localhost:3000', 'http://localhost:5002'],
+  origin: ['https://catalog.adihuman.com', 'http://localhost:3000', 'http://localhost:5002', 'https://api.adihuman.com'],
   credentials: true
 }));
 app.use(express.json());
