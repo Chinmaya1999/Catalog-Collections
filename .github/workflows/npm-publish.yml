@@ -150,13 +150,15 @@ jobs:
             # Note: Update AWS security group to allow port 443
             echo "IMPORTANT: Add port 443 to your AWS security group inbound rules"
             
-            # Create .env file from GitHub secret
-            echo "${{ secrets.ENV_FILE }}" > .env
+            # Create .env file from GitHub secrets (more secure approach)
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
+            echo "PORT=${{ secrets.PORT }}" >> .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             
             # Create Docker network for container communication
             sudo docker network create catalog-network || true
             
-            # Start backend container with OAuth environment variables
+            # Start backend container with environment variables
             sudo docker run -d \
               --name backend \
               --network catalog-network \
