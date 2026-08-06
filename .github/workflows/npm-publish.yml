@@ -1,33 +1,159 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
-
-name: Node.js Package
+name: CI/CD Pipeline
 
 on:
-  release:
-    types: [created]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
-  build:
+  # Build and Push Docker Images
+  build-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm test
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-  publish-npm:
-    needs: build
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: true
+          tags: |
+            awsmallick1999/catalog-server:latest
+            awsmallick1999/catalog-server:${{ github.sha }}
+          cache-from: type=registry,ref=awsmallick1999/catalog-server:buildcache
+          cache-to: type=registry,ref=awsmallick1999/catalog-server:buildcache,mode=max
+
+  build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            awsmallick1999/catalog-client:latest
+            awsmallick1999/catalog-client:${{ github.sha }}
+          cache-from: type=registry,ref=awsmallick1999/catalog-client:buildcache
+          cache-to: type=registry,ref=awsmallick1999/catalog-client:buildcache,mode=max
+
+  # Deploy to AWS EC2
+  deploy:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            # Use ec2-user's home directory instead of root
+            PROJECT_DIR="/home/ec2-user/Catalog-Collections"
+            
+            # Check if project exists, if not clone it
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Project directory not found. Cloning repository..."
+              cd /home/ec2-user
+              git clone https://github.com/Chinmaya1999/Catalog-Collections.git
+            fi
+            
+            # Navigate to project directory
+            cd $PROJECT_DIR || exit 1
+            
+            # Pull latest changes
+            git pull origin master
+            
+            # Stop and remove old containers
+            sudo docker stop frontend backend || true
+            sudo docker rm frontend backend || true
+            
+            # Pull latest images
+            sudo docker pull awsmallick1999/catalog-server:latest
+            sudo docker pull awsmallick1999/catalog-client:latest
+            
+            # Create .env file from GitHub secret
+            echo "${{ secrets.ENV_FILE }}" > .env
+            
+            # Start backend container with OAuth environment variables
+            sudo docker run -d \
+              --name backend \
+              -p 5002:5002 \
+              --env-file .env \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
+              -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+             awsmallick1999/catalog-server:latest
+            
+            # Start frontend container
+            sudo docker run -d \
+              --name frontend \
+              -p 3000:80 \
+              awsmallick1999/catalog-client:latest
+            
+            # Clean up unused images
+            sudo docker image prune -f
+            
+            # Check container status
+            sudo docker ps
+
+ 
+
+  # Rollback
+  rollback:
+    needs: [deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rollback deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            PROJECT_DIR="/home/ec2-user/Catalog-Collections"
+            cd $PROJECT_DIR
+            sudo docker stop frontend backend || true
+            sudo docker rm frontend backend || true
+            # Pull previous stable versions if tagged
+            sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
+            sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
+            sudo docker run -d --name backend -p 5001:5001 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
+            sudo docker run -d --name frontend -p 3000:80 awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
