@@ -132,6 +132,7 @@ jobs:
             sudo docker run -d \
               --name backend \
               --network catalog-network \
+              --network-alias server \
               -p 5002:5002 \
               --env-file .env \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
@@ -176,5 +177,5 @@ jobs:
             # Pull previous stable versions if tagged
             sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
             sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            sudo docker run -d --name backend --network catalog-network -p 5001:5001 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
+            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5001:5001 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
             sudo docker run -d --name frontend --network catalog-network -p 3000:80 awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
