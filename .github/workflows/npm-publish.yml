@@ -70,6 +70,7 @@ jobs:
   deploy:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -82,111 +83,176 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # Use ec2-user's home directory instead of root
+            # Configuration
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
+            DOMAIN="catalog.adihuman.com"
+            API_DOMAIN="api.adihuman.com"
             
-            # Install git if not available
+            echo "🚀 Starting deployment..."
+            
+            # Install dependencies if needed
             if ! command -v git &> /dev/null; then
-              echo "Git not found. Installing git..."
+              echo "📦 Installing git..."
               sudo yum install -y git || sudo apt-get install -y git
             fi
             
-            # Install Docker if not available
             if ! command -v docker &> /dev/null; then
-              echo "Docker not found. Installing Docker..."
+              echo "📦 Installing Docker..."
               sudo yum install -y docker || sudo apt-get install -y docker.io
               sudo systemctl start docker
               sudo systemctl enable docker
-              sudo usermod -aG docker $USER || true
+              sudo usermod -aG docker ec2-user || true
             fi
             
-            # Update AWS security group to allow HTTPS traffic
-            echo "Note: Ensure your AWS security group allows inbound traffic on ports 80 (HTTP) and 443 (HTTPS)"
-            
-            # Check if project exists, if not clone it
+            # Clone or update project
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Project directory not found. Creating directory and cloning repository..."
+              echo "📥 Cloning repository..."
               mkdir -p /home/ec2-user
               cd /home/ec2-user
               git clone https://github.com/Chinmaya1999/Catalog-Collections.git
             fi
             
-            # Navigate to project directory
             cd $PROJECT_DIR || exit 1
-            
-            # Pull latest changes
+            echo "🔄 Pulling latest changes..."
             git pull origin main
             
             # Stop and remove old containers
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            echo "🛑 Stopping old containers..."
+            sudo docker stop frontend backend 2>/dev/null || true
+            sudo docker rm frontend backend 2>/dev/null || true
             
             # Pull latest images
+            echo "📥 Pulling latest Docker images..."
             sudo docker pull awsmallick1999/catalog-server:latest
             sudo docker pull awsmallick1999/catalog-client:latest
             
-            # Setup SSL certificates if not already present
-            if [ ! -d "/etc/letsencrypt/live/catalog.adihuman.com" ]; then
-              echo "Setting up SSL certificates..."
-              # Install Certbot if not present
+            # Setup SSL certificates
+            if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+              echo "🔐 Setting up SSL certificates..."
               sudo yum install -y certbot || sudo apt-get install -y certbot
               
-              # Stop any existing frontend to free port 80
-              sudo docker stop frontend || true
+              # Stop any services using port 80
+              sudo docker stop frontend 2>/dev/null || true
+              sudo systemctl stop nginx 2>/dev/null || true
+              sudo systemctl stop httpd 2>/dev/null || true
               
-              # Obtain SSL certificates for both domains
+              # Wait for port 80 to be free
+              sleep 5
+              
+              # Obtain SSL certificates
               sudo certbot certonly --standalone \
                 --email "pradipta@uuoinnovation.com" \
                 --agree-tos \
                 --no-eff-email \
-                -d catalog.adihuman.com \
-                -d api.adihuman.com \
-                --non-interactive || echo "SSL certificate setup failed, continuing without SSL"
+                -d $DOMAIN \
+                -d $API_DOMAIN \
+                --non-interactive || echo "⚠️ SSL certificate setup failed"
+              
+              # Fix SSL permissions
+              sudo chmod 755 /etc/letsencrypt/
+              sudo chmod 755 /etc/letsencrypt/live/
+              sudo chmod 755 /etc/letsencrypt/live/$DOMAIN/
+              sudo chmod 644 /etc/letsencrypt/live/$DOMAIN/fullchain.pem
+              sudo chmod 644 /etc/letsencrypt/live/$DOMAIN/privkey.pem
+              sudo chmod 755 /etc/letsencrypt/archive/
+              sudo chmod 755 /etc/letsencrypt/archive/$DOMAIN/
+              sudo chmod 644 /etc/letsencrypt/archive/$DOMAIN/fullchain*.pem
+              sudo chmod 644 /etc/letsencrypt/archive/$DOMAIN/privkey*.pem
             fi
             
-            # Setup automatic SSL certificate renewal
+            # Setup SSL auto-renewal
             (crontab -l 2>/dev/null | grep -v "certbot renew" || true; echo "0 0 * * 0 certbot renew --quiet && docker restart frontend") | crontab -
             
-            # Note: Update AWS security group to allow port 443
-            echo "IMPORTANT: Add port 443 to your AWS security group inbound rules"
+            # Create Docker network
+            sudo docker network create catalog-network 2>/dev/null || true
             
-            # Create .env file from GitHub secret
-            echo "${{ secrets.ENV_FILE }}" > .env
+            # Create .env file with all environment variables
+            echo "📝 Creating environment file..."
+            cat > .env << 'EOF'
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            PORT=5002
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}
+            GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}
+            EOF
             
-            # Create Docker network for container communication
-            sudo docker network create catalog-network || true
-            
-            # Start backend container with OAuth environment variables
+            # Start backend container
+            echo "🚀 Starting backend container..."
             sudo docker run -d \
               --name backend \
               --network catalog-network \
               --network-alias server \
               -p 5002:5002 \
               --env-file .env \
-              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
-              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
-              -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
-              -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+              --restart unless-stopped \
               awsmallick1999/catalog-server:latest
             
+            # Wait for backend to initialize
+            echo "⏳ Waiting for backend to initialize..."
+            sleep 10
+            
+            # Check if backend is healthy
+            if sudo docker ps | grep -q backend; then
+              echo "✅ Backend container is running"
+            else
+              echo "❌ Backend container failed to start"
+              sudo docker logs backend --tail 50
+              exit 1
+            fi
+            
             # Start frontend container
+            echo "🚀 Starting frontend container..."
             sudo docker run -d \
               --name frontend \
               --network catalog-network \
               -p 80:80 \
               -p 443:443 \
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              -v /etc/letsencrypt/live/$DOMAIN/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro \
+              -v /etc/letsencrypt/live/$DOMAIN/privkey.pem:/etc/nginx/ssl/privkey.pem:ro \
+              --user root \
+              --restart unless-stopped \
               awsmallick1999/catalog-client:latest
+            
+            # Check if frontend is healthy
+            if sudo docker ps | grep -q frontend; then
+              echo "✅ Frontend container is running"
+            else
+              echo "❌ Frontend container failed to start"
+              sudo docker logs frontend --tail 50
+              exit 1
+            fi
             
             # Clean up unused images
             sudo docker image prune -f
             
-            # Check container status
+            # Show container status
+            echo "📊 Container Status:"
             sudo docker ps
+            
+            # Show backend logs
+            echo "📋 Backend Logs (last 20 lines):"
+            sudo docker logs backend --tail 20
+            
+            # Show frontend logs
+            echo "📋 Frontend Logs (last 20 lines):"
+            sudo docker logs frontend --tail 20
+            
+            # Test API endpoint
+            echo "🧪 Testing API endpoint..."
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5002/api/catalog | grep -q "200\|500"; then
+              echo "✅ API endpoint is responding"
+            else
+              echo "⚠️ API endpoint might not be accessible"
+            fi
+            
+            echo "✅ Deployment completed successfully!"
+            echo "🌐 Website: https://$DOMAIN"
+            echo "🔗 API: https://$API_DOMAIN"
 
- 
-
-  # Rollback
+  # Rollback on failure
   rollback:
     needs: [deploy]
     if: failure()
@@ -200,12 +266,59 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+            echo "🔄 Starting rollback..."
+            
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
-            cd $PROJECT_DIR
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
-            # Pull previous stable versions if tagged
-            sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
-            sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5002:5002 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
-            sudo docker run -d --name frontend --network catalog-network -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
+            cd $PROJECT_DIR || exit 1
+            
+            # Stop current containers
+            echo "🛑 Stopping current containers..."
+            sudo docker stop frontend backend 2>/dev/null || true
+            sudo docker rm frontend backend 2>/dev/null || true
+            
+            # Get previous commit hash
+            PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+            
+            # Pull previous versions
+            echo "📥 Pulling previous versions..."
+            sudo docker pull awsmallick1999/catalog-server:$PREVIOUS_COMMIT || sudo docker pull awsmallick1999/catalog-server:latest
+            sudo docker pull awsmallick1999/catalog-client:$PREVIOUS_COMMIT || sudo docker pull awsmallick1999/catalog-client:latest
+            
+            # Start previous versions
+            echo "🔄 Starting previous versions..."
+            sudo docker run -d \
+              --name backend \
+              --network catalog-network \
+              --network-alias server \
+              -p 5002:5002 \
+              --env-file .env \
+              --restart unless-stopped \
+              awsmallick1999/catalog-server:$PREVIOUS_COMMIT || sudo docker run -d \
+              --name backend \
+              --network catalog-network \
+              --network-alias server \
+              -p 5002:5002 \
+              --env-file .env \
+              --restart unless-stopped \
+              awsmallick1999/catalog-server:latest
+            
+            sudo docker run -d \
+              --name frontend \
+              --network catalog-network \
+              -p 80:80 \
+              -p 443:443 \
+              -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              --user root \
+              --restart unless-stopped \
+              awsmallick1999/catalog-client:$PREVIOUS_COMMIT || sudo docker run -d \
+              --name frontend \
+              --network catalog-network \
+              -p 80:80 \
+              -p 443:443 \
+              -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              --user root \
+              --restart unless-stopped \
+              awsmallick1999/catalog-client:latest
+            
+            echo "✅ Rollback completed!"
+            sudo docker ps
