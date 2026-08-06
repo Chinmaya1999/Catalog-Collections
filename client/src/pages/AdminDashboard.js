@@ -104,12 +104,18 @@ const AdminDashboard = () => {
       const { productCode, latitude, longitude } = vendorSearch;
       let url = `http://localhost:5002/api/vendor/product/${productCode}`;
       
-      if (latitude && longitude) {
+      // Always include location if available
+      if (userLocation.latitude && userLocation.longitude) {
+        url += `?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
+      } else if (latitude && longitude) {
         url += `?latitude=${latitude}&longitude=${longitude}`;
       }
 
+      console.log('Searching vendors with URL:', url);
       const response = await fetch(url);
       const data = await response.json();
+      
+      console.log('Search results:', data);
       
       if (response.ok) {
         setSearchResults(data);

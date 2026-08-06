@@ -58,7 +58,8 @@ const SuperadminDashboard = () => {
     featured: false,
     new: false,
     ecoFriendly: false,
-    products: []
+    products: [],
+    baseCodePattern: ''
   });
 
   const [vendorFormData, setVendorFormData] = useState({
@@ -283,6 +284,37 @@ const SuperadminDashboard = () => {
       ...prev,
       [page]: codes
     }));
+  };
+
+  // Auto-generate product codes based on base pattern
+  const handleAutoGenerateCodes = () => {
+    const basePattern = catalogFormData.baseCodePattern;
+    if (!basePattern) {
+      alert('Please enter a base code pattern first (e.g., ADB-000)');
+      return;
+    }
+
+    // Parse the base pattern to extract prefix and determine number format
+    const match = basePattern.match(/^(.*?)(0+)$/);
+    if (!match) {
+      alert('Invalid pattern. Please include zeros at the end (e.g., ADB-000 or AH-00)');
+      return;
+    }
+
+    const prefix = match[1];
+    const zeroCount = match[2].length;
+
+    // Generate codes for all pages
+    const newPageCodes = {};
+    for (let pageNum = 1; pageNum <= pdfTotalPages; pageNum++) {
+      // Generate sequential number with proper padding
+      const paddedNumber = String(pageNum).padStart(zeroCount, '0');
+      const code = `${prefix}${paddedNumber}`;
+      newPageCodes[pageNum] = code;
+    }
+
+    setPageProductCodes(newPageCodes);
+    alert(`Successfully generated ${pdfTotalPages} product codes from ${prefix}001 to ${prefix}${String(pdfTotalPages).padStart(zeroCount, '0')}`);
   };
 
   // Convert page-wise codes to products array
@@ -575,7 +607,7 @@ const SuperadminDashboard = () => {
     setVendorFormData({ ...vendorFormData, googleMapsLink: link });
 
     // Parse Google Maps link to extract coordinates
-    if (link && (link.includes('maps.app.goo.gl') || link.includes('google.com/maps'))) {
+    if (link && (link.includes('maps.app.goo.gl') || link.includes('google.com/maps') || link.includes('openstreetmap.org'))) {
       try {
         // For shortened links, we need to resolve them first
         if (link.includes('maps.app.goo.gl')) {
@@ -585,11 +617,31 @@ const SuperadminDashboard = () => {
           return;
         }
 
-        // Extract coordinates from Google Maps URL
-        const coordsMatch = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        // Extract coordinates from Google Maps URL - multiple formats
+        let coordsMatch = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        
+        // Try alternative format: !3d(lat)!4d(lng)
+        if (!coordsMatch) {
+          coordsMatch = link.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+        }
+        
+        // Try format: q=lat,lng
+        if (!coordsMatch) {
+          coordsMatch = link.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        }
+        
+        // Try OpenStreetMap format: #map=lat/zoom/lng or lat,lng
+        if (!coordsMatch && link.includes('openstreetmap.org')) {
+          coordsMatch = link.match(/#map=\d+\/(-?\d+\.\d+)\/(-?\d+\.\d+)/);
+          if (!coordsMatch) {
+            coordsMatch = link.match(/mlat=(-?\d+\.\d+)&mlon=(-?\d+\.\d+)/);
+          }
+        }
+
         if (coordsMatch) {
           const lat = parseFloat(coordsMatch[1]);
           const lng = parseFloat(coordsMatch[2]);
+          console.log('Extracted coordinates:', { lat, lng });
           setVendorFormData({
             ...vendorFormData,
             location: {
@@ -597,9 +649,11 @@ const SuperadminDashboard = () => {
               coordinates: [lng, lat]
             }
           });
+        } else {
+          console.log('Could not extract coordinates from link format');
         }
       } catch (error) {
-        console.error('Error parsing Google Maps link:', error);
+        console.error('Error parsing location link:', error);
       }
     }
   };
@@ -717,7 +771,7 @@ const SuperadminDashboard = () => {
             <MapPin size={20} />
             Vendors by Catalog
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveTab('all-vendors')}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
               activeTab === 'all-vendors' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -725,7 +779,7 @@ const SuperadminDashboard = () => {
           >
             <MapPin size={20} />
             All Vendors
-          </button>
+          </button> */}
         </div>
 
         {/* Catalog Management Tab */}
@@ -1294,7 +1348,36 @@ const SuperadminDashboard = () => {
                         </button>
                       </div>
                     </div>
-                    
+
+                    {/* Auto-Generate Codes Section */}
+                    <div className="bg-white p-4 rounded-xl border-2 border-purple-200 mb-6">
+                      <h4 className="font-bold text-gray-900 mb-3">Auto-Generate Product Codes</h4>
+                      <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Base Code Pattern
+                          </label>
+                          <input
+                            type="text"
+                            value={catalogFormData.baseCodePattern || ''}
+                            onChange={(e) => setCatalogFormData({ ...catalogFormData, baseCodePattern: e.target.value })}
+                            placeholder="e.g., ADB-000 or AH-00"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Enter base pattern with zeros (e.g., ADB-000). System will auto-generate: ADB-001, ADB-002, etc.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAutoGenerateCodes}
+                          className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-bold hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg"
+                        >
+                          Auto-Generate All Codes
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="space-y-4">
                       {Array.from({ length: pdfTotalPages }, (_, i) => i + 1).map(pageNum => (
                         <div key={pageNum} className="bg-white p-4 rounded-lg border">

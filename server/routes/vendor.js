@@ -34,6 +34,8 @@ router.get('/product/:productCode', async (req, res) => {
     const { productCode } = req.params;
     const { latitude, longitude } = req.query;
     
+    console.log('Vendor search request:', { productCode, latitude, longitude });
+    
     // Search in both productCode (single) and productCodes (array) fields
     let vendors = await Vendor.find({ 
       $or: [
@@ -44,6 +46,8 @@ router.get('/product/:productCode', async (req, res) => {
     })
       .populate('catalogId', 'name categoryName pdfFile');
     
+    console.log(`Found ${vendors.length} vendors for product code ${productCode}`);
+    
     // Calculate distances if location is provided
     if (latitude && longitude) {
       const adminLocation = {
@@ -51,20 +55,27 @@ router.get('/product/:productCode', async (req, res) => {
         coordinates: [parseFloat(longitude), parseFloat(latitude)]
       };
       
+      console.log('Admin location:', adminLocation);
+      
       vendors = vendors.map(vendor => {
-        // Only calculate distance if vendor has valid coordinates
-        if (vendor.location.coordinates[0] !== 0 && vendor.location.coordinates[1] !== 0) {
+        console.log(`Vendor ${vendor.name} location:`, vendor.location);
+        
+        // Only calculate distance if vendor has valid coordinates (not 0,0)
+        if (vendor.location && vendor.location.coordinates && 
+            vendor.location.coordinates[0] !== 0 && vendor.location.coordinates[1] !== 0) {
           const distance = calculateDistance(
             adminLocation.coordinates[1],
             adminLocation.coordinates[0],
             vendor.location.coordinates[1],
             vendor.location.coordinates[0]
           );
+          console.log(`Distance to ${vendor.name}: ${distance} km`);
           return {
             ...vendor.toObject(),
             distance: distance
           };
         }
+        console.log(`Vendor ${vendor.name} has invalid coordinates, skipping distance calculation`);
         return {
           ...vendor.toObject(),
           distance: null
@@ -82,6 +93,7 @@ router.get('/product/:productCode', async (req, res) => {
     
     res.json(vendors);
   } catch (error) {
+    console.error('Error fetching vendors by product code:', error);
     res.status(500).json({ message: 'Error fetching vendors by product code', error: error.message });
   }
 });
