@@ -3,25 +3,15 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'server/**'
-      - 'client/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/npm-publish.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'server/**'
-      - 'client/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/npm-publish.yml'
 
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
-  # Build and Push Docker Images (parallel execution)
+  # Build and Push Docker Images
   build-backend:
     runs-on: ubuntu-latest
     steps:
@@ -40,8 +30,8 @@ jobs:
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
-          context: ./server
-          file: ./server/Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           push: true
           tags: |
             awsmallick1999/catalog-server:latest
@@ -68,8 +58,8 @@ jobs:
       - name: Build and push Frontend
         uses: docker/build-push-action@v4
         with:
-          context: ./client
-          file: ./client/Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: |
             awsmallick1999/catalog-client:latest
@@ -78,11 +68,10 @@ jobs:
           cache-to: type=registry,ref=awsmallick1999/catalog-client:buildcache,mode=max
           platforms: linux/amd64
 
-  # Deploy to AWS EC2 (only on push to main)
+  # Deploy to AWS EC2
   deploy:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -94,29 +83,13 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          command_timeout: 5m
           script: |
             # Use ec2-user's home directory instead of root
-            PROJECT_DIR="/home/ec2-user/Catalog-Collections"
-            
-            # Install dependencies only if not available
-            if ! command -v git &> /dev/null; then
-              echo "Git not found. Installing git..."
-              sudo yum install -y git || sudo apt-get install -y git
-            fi
-            
-            if ! command -v docker &> /dev/null; then
-              echo "Docker not found. Installing Docker..."
-              sudo yum install -y docker || sudo apt-get install -y docker.io
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              sudo usermod -aG docker $USER || true
-            fi
+             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Project directory not found. Creating directory and cloning repository..."
-              mkdir -p /home/ec2-user
+              echo "Project directory not found. Cloning repository..."
               cd /home/ec2-user
               git clone https://github.com/Chinmaya1999/Catalog-Collections.git
             fi
@@ -125,43 +98,49 @@ jobs:
             cd $PROJECT_DIR || exit 1
             
             # Pull latest changes
-            git pull origin main
+            git pull origin master
             
-            # Create .env file from GitHub secrets
-            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
-            echo "PORT=${{ secrets.PORT }}" >> .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
-            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
-            echo "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}" >> .env
-            echo "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}" >> .env
-            
-            # Create Docker network for container communication
-            sudo docker network create catalog-network || true
+            # Stop and remove old containers
+            sudo docker stop frontend backend || true
+            sudo docker rm frontend backend || true
             
             # Pull latest images
             sudo docker pull awsmallick1999/catalog-server:latest
             sudo docker pull awsmallick1999/catalog-client:latest
             
-            # Stop and remove old containers using docker-compose
-            sudo docker-compose down || true
             
-            # Start containers using docker-compose
-            sudo docker-compose up -d
+            # Create .env file from GitHub secret
+            echo "${{ secrets.ENV_FILE }}" > .env
             
-            # Wait for containers to be healthy
-            sleep 10
-            
-            # Check container status
-            sudo docker ps
+            # Start backend container with OAuth environment variables
+            sudo docker run -d \
+              --name backend \
+              -p 5002:5002 \
+              --env-file .env \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
+              -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+              awsmallick1999/catalog-server:latest
+
+            # Start frontend container
+            sudo docker run -d \
+              --name frontend \
+              -p 3000:80 \
+              awsmallick1999/catalog-client:latest
             
             # Clean up unused images
             sudo docker image prune -f
+            
+            # Check container status
+            sudo docker ps
 
-  # Rollback (only on failure)
+ 
+
+  # Rollback
   rollback:
     needs: [deploy]
-    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: failure()
     runs-on: ubuntu-latest
     steps:
       - name: Rollback deployment
@@ -171,7 +150,6 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          command_timeout: 3m
           script: |
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             cd $PROJECT_DIR
