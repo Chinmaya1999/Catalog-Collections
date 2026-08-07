@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'http://localhost:5002';
+export const API_BASE_URL = 'http://13.127.87.230:5002';
 
 export const API_ENDPOINTS = {
   catalog: `${API_BASE_URL}/api/catalog`,
