@@ -17,7 +17,9 @@ const allowedOrigins = [
   'http://127.0.0.1:80',
   'http://13.127.87.230:3000',
   'http://13.127.87.230:5002',
-  'http://13.127.87.230:80'
+  'http://13.127.87.230:80',
+  'https://api.adihuman.com',
+  'https://adihuman.com'
 ];
 
 const corsOptions = {
