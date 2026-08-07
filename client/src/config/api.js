@@ -1,5 +1,6 @@
 // API Configuration
-export const API_BASE_URL = 'https://api.adihuman.com';
+// Use relative paths to leverage nginx proxy (no CORS issues)
+export const API_BASE_URL = '';
 
 export const API_ENDPOINTS = {
   catalog: `${API_BASE_URL}/api/catalog`,
@@ -13,11 +14,13 @@ export const API_ENDPOINTS = {
 // Helper function to get image URL
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '';
-  return imagePath.startsWith('/uploads') ? `${API_BASE_URL}${imagePath}` : imagePath;
+  // Use relative paths for uploads served through nginx proxy
+  return imagePath.startsWith('/uploads') ? imagePath : imagePath;
 };
 
 // Helper function to get PDF URL
 export const getPdfUrl = (pdfPath) => {
   if (!pdfPath) return '';
-  return pdfPath.startsWith('/uploads') ? `${API_BASE_URL}${pdfPath}` : pdfPath;
+  // Use relative paths for uploads served through nginx proxy
+  return pdfPath.startsWith('/uploads') ? pdfPath : pdfPath;
 };
