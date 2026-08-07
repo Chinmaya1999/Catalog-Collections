@@ -100,9 +100,6 @@ jobs:
               sudo usermod -aG docker $USER || true
             fi
             
-            # Update AWS security group to allow HTTPS traffic
-            echo "Note: Ensure your AWS security group allows inbound traffic on ports 80 (HTTP) and 443 (HTTPS)"
-            
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found. Creating directory and cloning repository..."
@@ -118,8 +115,8 @@ jobs:
             git pull origin main
             
             # Stop and remove old containers
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            sudo docker stop frontend backend mongodb || true
+            sudo docker rm frontend backend mongodb || true
             
             # Pull latest images
             sudo docker pull awsmallick1999/catalog-server:latest
@@ -129,7 +126,7 @@ jobs:
             if [ ! -d "/etc/letsencrypt/live/catalog.adihuman.com" ]; then
               echo "Setting up SSL certificates..."
               # Install Certbot if not present
-              sudo yum install -y certbot || sudo apt-get install -y certbot
+              sudo yum install -y certbot python3-certbot-nginx || sudo apt-get install -y certbot python3-certbot-nginx
               
               # Stop any existing frontend to free port 80
               sudo docker stop frontend || true
@@ -147,46 +144,73 @@ jobs:
             # Setup automatic SSL certificate renewal
             (crontab -l 2>/dev/null | grep -v "certbot renew" || true; echo "0 0 * * 0 certbot renew --quiet && docker restart frontend") | crontab -
             
-            # Note: Update AWS security group to allow port 443
-            echo "IMPORTANT: Add port 443 to your AWS security group inbound rules"
-            
-            # Create .env file from GitHub secrets (more secure approach)
-            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
-            echo "PORT=${{ secrets.PORT }}" >> .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            
             # Create Docker network for container communication
             sudo docker network create catalog-network || true
             
-            # Start backend container with environment variables
+            # Start MongoDB container (if using local MongoDB)
+            echo "Starting MongoDB container..."
+            sudo docker run -d \
+              --name mongodb \
+              --network catalog-network \
+              --network-alias mongodb \
+              -p 27017:27017 \
+              -v mongodb_data:/data/db \
+              --restart unless-stopped \
+              mongo:latest
+            
+            # Wait for MongoDB to be ready
+            echo "Waiting for MongoDB to start..."
+            sleep 15
+            
+            # Start backend container with ALL environment variables
+            echo "Starting backend container..."
             sudo docker run -d \
               --name backend \
               --network catalog-network \
-              --network-alias server \
+              --network-alias backend \
               -p 5002:5002 \
-              --env-file .env \
+              -e MONGODB_URI="mongodb+srv://contact_db_user:VM7vPjtxhkZvOlnU@clusteradhiuman.znzeltu.mongodb.net/Adhiuman?appName=ClusterAdhiuman" \
+              -e PORT="5002" \
+              -e JWT_SECRET="adihuman-secret-key-change-in-production" \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
               -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+              --restart unless-stopped \
               awsmallick1999/catalog-server:latest
             
+            # Wait for backend to initialize
+            echo "Waiting for backend to initialize..."
+            sleep 10
+            
             # Start frontend container
+            echo "Starting frontend container..."
             sudo docker run -d \
               --name frontend \
               --network catalog-network \
               -p 80:80 \
               -p 443:443 \
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              --restart unless-stopped \
               awsmallick1999/catalog-client:latest
+            
+            # Wait for containers to start
+            sleep 5
+            
+            # Check container status
+            echo "=== Container Status ==="
+            sudo docker ps
+            
+            # Check backend logs
+            echo "=== Backend Logs ==="
+            sudo docker logs backend --tail 20
+            
+            # Check if backend is responding
+            echo "=== Testing Backend API ==="
+            sudo docker exec backend curl -s http://localhost:5002/api/catalog || echo "Backend API not responding yet"
             
             # Clean up unused images
             sudo docker image prune -f
-            
-            # Check container status
-            sudo docker ps
-
- 
 
   # Rollback
   rollback:
@@ -204,10 +228,50 @@ jobs:
           script: |
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             cd $PROJECT_DIR
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            
+            echo "=== Starting Rollback ==="
+            sudo docker stop frontend backend mongodb || true
+            sudo docker rm frontend backend mongodb || true
+            
             # Pull previous stable versions if tagged
             sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
             sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5002:5002 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
-            sudo docker run -d --name frontend --network catalog-network -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
+            
+            # Start MongoDB
+            sudo docker run -d \
+              --name mongodb \
+              --network catalog-network \
+              --network-alias mongodb \
+              -p 27017:27017 \
+              -v mongodb_data:/data/db \
+              --restart unless-stopped \
+              mongo:latest || echo "MongoDB start failed"
+            
+            sleep 10
+            
+            # Rollback backend
+            sudo docker run -d \
+              --name backend \
+              --network catalog-network \
+              --network-alias backend \
+              -p 5002:5002 \
+              -e MONGODB_URI="mongodb+srv://contact_db_user:VM7vPjtxhkZvOlnU@clusteradhiuman.znzeltu.mongodb.net/Adhiuman?appName=ClusterAdhiuman" \
+              -e PORT="5002" \
+              -e JWT_SECRET="adihuman-secret-key-change-in-production" \
+              --restart unless-stopped \
+              awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
+            
+            sleep 5
+            
+            # Rollback frontend
+            sudo docker run -d \
+              --name frontend \
+              --network catalog-network \
+              -p 80:80 \
+              -p 443:443 \
+              -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              --restart unless-stopped \
+              awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
+            
+            echo "=== Rollback Status ==="
+            sudo docker ps
