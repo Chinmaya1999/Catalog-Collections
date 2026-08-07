@@ -71,197 +71,129 @@ const Home = memo(() => {
 
   return (
     <div className="pt-20">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-brand-yellow via-brand-gold to-yellow-400 overflow-hidden">
-        <div className="absolute inset-0 bg-black/10" />
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32"
-        >
-          <div className="text-center">
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-5xl md:text-7xl font-display font-bold text-brand-dark mb-6"
-            >
-              Premium Personalized
-              <br />
-              <span className="text-white">Products</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-xl md:text-2xl text-brand-dark/80 mb-8 max-w-2xl mx-auto"
-            >
-              Browse our complete product catalog with detailed information and downloadable catalogs
-            </motion.p>
+      {/* Hero Section - Split Layout */}
+      <section className="relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <motion.div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="lg:col-span-7"
             >
-              <Link to="/catalog" className="btn-primary">
-                Explore Catalog
-                <ArrowRight className="inline ml-2 w-5 h-5" />
-              </Link>
-              <Link to="/catalog" className="btn-secondary">
-                <Gift className="inline ml-2 w-5 h-5" />
-                View All Catalogs
-              </Link>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-gray-900 leading-tight mb-6">
+                Stand Out With Premium Customized Products
+              </h1>
+              <p className="text-lg text-gray-600 mb-8 max-w-2xl">
+                High-quality branded merchandise, customizable catalogs, and easy vendor connections — all in one place.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link to="/catalog" className="btn-primary inline-flex items-center">
+                  Explore Catalog
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+                <Link to="/contact" className="btn-secondary inline-flex items-center">
+                  Contact Sales
+                </Link>
+              </div>
+
+              <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="text-sm text-gray-500">Trusted by</div>
+                <div className="text-sm text-gray-500">1000+ Businesses</div>
+                <div className="text-sm text-gray-500">Fast Delivery</div>
+                <div className="text-sm text-gray-500">Secure Payments</div>
+              </div>
             </motion.div>
-          </div>
-        </motion.div>
-      </section>
 
-      {/* Featured Catalogs */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl font-display font-bold text-brand-dark mb-4">
-              Our <span className="text-gradient">Catalog Collections</span>
-            </h2>
-            <p className="text-gray-600 text-lg">Click on any catalog to view the complete product details</p>
-          </motion.div>
-
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {catalogs.filter(c => c.featured).map((catalog) => (
-              <motion.div
-                key={catalog._id}
-                variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
-              >
-                <div onClick={() => setSelectedCatalog(catalog)} className="cursor-pointer">
-                  <div className="card group">
-                    <div className="relative h-64 bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 flex items-center justify-center overflow-hidden">
-                      {catalog.new && (
-                        <span className="absolute top-4 left-4 bg-brand-yellow text-brand-dark px-3 py-1 rounded-full text-sm font-semibold z-10">
-                          NEW
-                        </span>
-                      )}
-                      <img 
-                        src={getImageUrl(catalog.image)} 
-                        alt={catalog.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="lg:col-span-5"
+            >
+              <div className="relative rounded-2xl shadow-2xl overflow-hidden">
+                <div className="grid grid-cols-2 gap-2">
+                  {catalogs.slice(0,4).map((c, idx) => (
+                    <div key={c._id} className={`h-36 bg-gray-100 ${idx === 0 ? 'col-span-2 h-48' : ''}`} onClick={() => setSelectedCatalog(c)}>
+                      <img src={getImageUrl(c.image)} alt={c.name} className="w-full h-full object-cover" />
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-brand-dark mb-2">{catalog.name}</h3>
-                      <p className="text-gray-600 text-sm mb-4">{catalog.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-brand-yellow font-semibold">
-                          {catalog.comboCount > 0 ? `${catalog.comboCount} Items` : 'View Catalog'}
-                        </span>
-                        <ExternalLink className="w-5 h-5 text-brand-dark group-hover:translate-x-2 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
+                <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-md">
+                  <Link to="/catalog" className="font-semibold text-gray-900">Browse all catalogs</Link>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Features Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900">Why choose us?</h2>
+            <p className="text-gray-600 mt-2">Designed for businesses that want quality, speed and reliability.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Custom Branding</h4>
+              <p className="text-gray-500 text-sm">Personalize products with your logo and message.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Bulk Pricing</h4>
+              <p className="text-gray-500 text-sm">Competitive rates for large orders.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Fast Turnaround</h4>
+              <p className="text-gray-500 text-sm">Get catalogs and vendors quickly.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Trusted Vendors</h4>
+              <p className="text-gray-500 text-sm">Our vendors are vetted for quality.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Catalog Preview */}
       <section className="py-20 bg-brand-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl font-display font-bold text-brand-dark mb-4">
-              Product <span className="text-gradient">Categories</span>
-            </h2>
-            <p className="text-gray-600 text-lg">Browse our complete product range</p>
-          </motion.div>
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-bold text-gray-900">Featured Catalogs</h3>
+            <Link to="/catalog" className="text-sm text-gray-600 hover:underline">View all catalogs</Link>
+          </div>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          >
-            {featuredProducts.slice(0, 8).map((product) => (
-              <motion.div
-                key={product._id}
-                variants={itemVariants}
-                whileHover={{ y: -10 }}
-              >
-                <div onClick={() => setSelectedCatalog(product)} className="cursor-pointer">
-                  <div className="card group">
-                    <div className="relative h-56 bg-gray-100 flex items-center justify-center overflow-hidden">
-                      {product.ecoFriendly && (
-                        <span className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold z-10">
-                          🌱 Eco
-                        </span>
-                      )}
-                      <img 
-                        src={getImageUrl(product.image)} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-brand-dark mb-2 line-clamp-2">{product.name}</h3>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">{product.categoryName || product.category}</span>
-                        <ExternalLink className="w-5 h-5 text-brand-yellow group-hover:translate-x-2 transition-transform" />
-                      </div>
+          <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {catalogs.slice(0,6).map(catalog => (
+              <motion.div key={catalog._id} whileHover={{ y: -6 }}>
+                <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+                  <div className="h-44 bg-gray-100 overflow-hidden">
+                    <img src={getImageUrl(catalog.image)} alt={catalog.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-semibold text-gray-900 mb-1">{catalog.name}</h4>
+                    <p className="text-sm text-gray-500 line-clamp-2">{catalog.description}</p>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button onClick={() => setSelectedCatalog(catalog)} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">Preview</button>
+                      <Link to="/catalog" className="px-3 py-2 bg-yellow-400 rounded-lg text-sm text-gray-900">Open</Link>
                     </div>
                   </div>
                 </div>
               </motion.div>
             ))}
           </motion.div>
-
-          <div className="text-center mt-12">
-            <Link to="/catalog" className="btn-primary">
-              View Complete Catalog
-              <ArrowRight className="inline ml-2 w-5 h-5" />
-            </Link>
-          </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-brand-dark text-white">
+      <section className="py-16 bg-gradient-to-r from-yellow-400 to-yellow-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl font-display font-bold mb-6">
-              Ready to Explore Our Products?
-            </h2>
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Browse our complete catalog with downloadable product information and detailed specifications
-            </p>
-            <Link to="/catalog" className="btn-primary">
-              Start Exploring
-              <ArrowRight className="inline ml-2 w-5 h-5" />
-            </Link>
-          </motion.div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">Ready to scale your brand?</h3>
+          <p className="text-gray-800 mb-6">Contact our team for a quick quote and catalog samples.</p>
+          <Link to="/contact" className="btn-primary">Get a Quote</Link>
         </div>
       </section>
 
