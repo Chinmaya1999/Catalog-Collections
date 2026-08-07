@@ -18,6 +18,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: List directory structure (for debugging)
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Checking for server directory:"
+          ls -la server || echo "server directory not found"
+          echo "Checking for client directory:"
+          ls -la client || echo "client directory not found"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -30,14 +40,14 @@ jobs:
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
-          context: ./server
+          context: .
           file: ./server/Dockerfile
           push: true
           tags: |
-            awsmallick1999/catalog-server:latest
-            awsmallick1999/catalog-server:${{ github.sha }}
-          cache-from: type=registry,ref=awsmallick1999/catalog-server:buildcache
-          cache-to: type=registry,ref=awsmallick1999/catalog-server:buildcache,mode=max
+            ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
+            ${{ secrets.DOCKER_USERNAME }}/catalog-server:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/catalog-server:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/catalog-server:buildcache,mode=max
           platforms: linux/amd64
 
   build-frontend:
@@ -45,6 +55,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: List directory structure (for debugging)
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Checking for client directory:"
+          ls -la client || echo "client directory not found"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -58,14 +76,14 @@ jobs:
       - name: Build and push Frontend
         uses: docker/build-push-action@v4
         with:
-          context: ./client
+          context: .
           file: ./client/Dockerfile
           push: true
           tags: |
-            awsmallick1999/catalog-client:latest
-            awsmallick1999/catalog-client:${{ github.sha }}
-          cache-from: type=registry,ref=awsmallick1999/catalog-client:buildcache
-          cache-to: type=registry,ref=awsmallick1999/catalog-client:buildcache,mode=max
+            ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
+            ${{ secrets.DOCKER_USERNAME }}/catalog-client:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/catalog-client:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/catalog-client:buildcache,mode=max
           platforms: linux/amd64
 
   # Deploy to AWS EC2
@@ -85,7 +103,7 @@ jobs:
           port: 22
           script: |
             # Use ec2-user's home directory instead of root
-             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
+            PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
@@ -98,16 +116,15 @@ jobs:
             cd $PROJECT_DIR || exit 1
             
             # Pull latest changes
-            git pull origin master
+            git pull origin main
             
             # Stop and remove old containers
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            sudo docker stop backend frontend || true
+            sudo docker rm backend frontend || true
             
             # Pull latest images
-            sudo docker pull awsmallick1999/catalog-server:latest
-            sudo docker pull awsmallick1999/catalog-client:latest
-            
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
             
             # Create .env file from GitHub secret
             echo "${{ secrets.ENV_FILE }}" > .env
@@ -121,21 +138,19 @@ jobs:
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
               -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-              awsmallick1999/catalog-server:latest
+              ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
 
             # Start frontend container
             sudo docker run -d \
               --name frontend \
               -p 3000:80 \
-              awsmallick1999/catalog-client:latest
+              ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
             
             # Clean up unused images
             sudo docker image prune -f
             
             # Check container status
             sudo docker ps
-
- 
 
   # Rollback
   rollback:
@@ -152,12 +167,46 @@ jobs:
           port: 22
           script: |
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
-            cd $PROJECT_DIR
-            sudo docker-compose down
-            # Pull previous stable versions if tagged
-            sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
-            sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            # Update docker-compose.yml to use previous tags
-            sudo sed -i 's|awsmallick1999/catalog-server:latest|awsmallick1999/catalog-server:previous|g' docker-compose.yml
-            sudo sed -i 's|awsmallick1999/catalog-client:latest|awsmallick1999/catalog-client:previous|g' docker-compose.yml
-            sudo docker-compose up -d || echo "Rollback failed, containers may not be running"
+            cd $PROJECT_DIR || exit 1
+            
+            echo "Attempting rollback..."
+            
+            # Stop current containers
+            sudo docker stop backend frontend || true
+            sudo docker rm backend frontend || true
+            
+            # Try to pull previous version
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous || echo "No previous version found"
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous || echo "No previous version found"
+            
+            # Start containers with previous version (or fallback to current if previous not available)
+            sudo docker run -d \
+              --name backend \
+              -p 5002:5002 \
+              --env-file .env \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
+              -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+              ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous || \
+              sudo docker run -d \
+                --name backend \
+                -p 5002:5002 \
+                --env-file .env \
+                -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+                -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+                -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
+                -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
+                ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
+
+            sudo docker run -d \
+              --name frontend \
+              -p 3000:80 \
+              ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous || \
+              sudo docker run -d \
+                --name frontend \
+                -p 3000:80 \
+                ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
+            
+            echo "Rollback completed. Current containers:"
+            sudo docker ps
