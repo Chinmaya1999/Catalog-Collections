@@ -3,15 +3,25 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'server/**'
+      - 'client/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/npm-publish.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'server/**'
+      - 'client/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/npm-publish.yml'
 
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
-  # Build and Push Docker Images
+  # Build and Push Docker Images (parallel execution)
   build-backend:
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +48,7 @@ jobs:
             awsmallick1999/catalog-server:${{ github.sha }}
           cache-from: type=registry,ref=awsmallick1999/catalog-server:buildcache
           cache-to: type=registry,ref=awsmallick1999/catalog-server:buildcache,mode=max
+          platforms: linux/amd64
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -65,11 +76,13 @@ jobs:
             awsmallick1999/catalog-client:${{ github.sha }}
           cache-from: type=registry,ref=awsmallick1999/catalog-client:buildcache
           cache-to: type=registry,ref=awsmallick1999/catalog-client:buildcache,mode=max
+          platforms: linux/amd64
 
-  # Deploy to AWS EC2
+  # Deploy to AWS EC2 (only on push to main)
   deploy:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -81,17 +94,17 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          command_timeout: 5m
           script: |
             # Use ec2-user's home directory instead of root
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             
-            # Install git if not available
+            # Install dependencies only if not available
             if ! command -v git &> /dev/null; then
               echo "Git not found. Installing git..."
               sudo yum install -y git || sudo apt-get install -y git
             fi
             
-            # Install Docker if not available
             if ! command -v docker &> /dev/null; then
               echo "Docker not found. Installing Docker..."
               sudo yum install -y docker || sudo apt-get install -y docker.io
@@ -99,9 +112,6 @@ jobs:
               sudo systemctl enable docker
               sudo usermod -aG docker $USER || true
             fi
-            
-            # Update AWS security group to allow HTTPS traffic
-            echo "Note: Ensure your AWS security group allows inbound traffic on ports 80 (HTTP) and 443 (HTTPS)"
             
             # Check if project exists, if not clone it
             if [ ! -d "$PROJECT_DIR" ]; then
@@ -117,81 +127,41 @@ jobs:
             # Pull latest changes
             git pull origin main
             
-            # Stop and remove old containers
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            # Create .env file from GitHub secrets
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
+            echo "PORT=${{ secrets.PORT }}" >> .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+            echo "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}" >> .env
+            echo "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}" >> .env
+            
+            # Create Docker network for container communication
+            sudo docker network create catalog-network || true
             
             # Pull latest images
             sudo docker pull awsmallick1999/catalog-server:latest
             sudo docker pull awsmallick1999/catalog-client:latest
             
-            # Setup SSL certificates if not already present
-            if [ ! -d "/etc/letsencrypt/live/catalog.adihuman.com" ]; then
-              echo "Setting up SSL certificates..."
-              # Install Certbot if not present
-              sudo yum install -y certbot || sudo apt-get install -y certbot
-              
-              # Stop any existing frontend to free port 80
-              sudo docker stop frontend || true
-              
-              # Obtain SSL certificates for both domains
-              sudo certbot certonly --standalone \
-                --email "pradipta@uuoinnovation.com" \
-                --agree-tos \
-                --no-eff-email \
-                -d catalog.adihuman.com \
-                -d api.adihuman.com \
-                --non-interactive || echo "SSL certificate setup failed, continuing without SSL"
-            fi
+            # Stop and remove old containers using docker-compose
+            sudo docker-compose down || true
             
-            # Setup automatic SSL certificate renewal
-            (crontab -l 2>/dev/null | grep -v "certbot renew" || true; echo "0 0 * * 0 certbot renew --quiet && docker restart frontend") | crontab -
+            # Start containers using docker-compose
+            sudo docker-compose up -d
             
-            # Note: Update AWS security group to allow port 443
-            echo "IMPORTANT: Add port 443 to your AWS security group inbound rules"
-            
-            # Create .env file from GitHub secrets (more secure approach)
-            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
-            echo "PORT=${{ secrets.PORT }}" >> .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            
-            # Create Docker network for container communication
-            sudo docker network create catalog-network || true
-            
-            # Start backend container with environment variables
-            sudo docker run -d \
-              --name backend \
-              --network catalog-network \
-              --network-alias server \
-              -p 5002:5002 \
-              --env-file .env \
-              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
-              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
-              -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
-              -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-              awsmallick1999/catalog-server:latest
-            
-            # Start frontend container
-            sudo docker run -d \
-              --name frontend \
-              --network catalog-network \
-              -p 80:80 \
-              -p 443:443 \
-              -v /etc/letsencrypt:/etc/letsencrypt:ro \
-              awsmallick1999/catalog-client:latest
-            
-            # Clean up unused images
-            sudo docker image prune -f
+            # Wait for containers to be healthy
+            sleep 10
             
             # Check container status
             sudo docker ps
+            
+            # Clean up unused images
+            sudo docker image prune -f
 
- 
-
-  # Rollback
+  # Rollback (only on failure)
   rollback:
     needs: [deploy]
-    if: failure()
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Rollback deployment
@@ -201,13 +171,15 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          command_timeout: 3m
           script: |
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             cd $PROJECT_DIR
-            sudo docker stop frontend backend || true
-            sudo docker rm frontend backend || true
+            sudo docker-compose down
             # Pull previous stable versions if tagged
             sudo docker pull awsmallick1999/catalog-server:previous || echo "No previous version found"
             sudo docker pull awsmallick1999/catalog-client:previous || echo "No previous version found"
-            sudo docker run -d --name backend --network catalog-network --network-alias server -p 5002:5002 awsmallick1999/catalog-server:previous || echo "Backend rollback failed"
-            sudo docker run -d --name frontend --network catalog-network -p 80:80 -p 443:443 -v /etc/letsencrypt:/etc/letsencrypt:ro awsmallick1999/catalog-client:previous || echo "Frontend rollback failed"
+            # Update docker-compose.yml to use previous tags
+            sudo sed -i 's|awsmallick1999/catalog-server:latest|awsmallick1999/catalog-server:previous|g' docker-compose.yml
+            sudo sed -i 's|awsmallick1999/catalog-client:latest|awsmallick1999/catalog-client:previous|g' docker-compose.yml
+            sudo docker-compose up -d || echo "Rollback failed, containers may not be running"

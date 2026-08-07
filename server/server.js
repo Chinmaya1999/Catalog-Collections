@@ -8,14 +8,13 @@ const app = express();
 
 // ==================== CORS Configuration ====================
 const allowedOrigins = [
-  'https://catalog.adihuman.com',
-  'http://catalog.adihuman.com',
-  'https://api.adihuman.com',
-  'http://api.adihuman.com',
   'http://localhost:3000',
   'http://localhost:5002',
   'http://localhost:80',
-  'http://localhost'
+  'http://localhost',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5002',
+  'http://127.0.0.1:80'
 ];
 
 const corsOptions = {
