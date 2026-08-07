@@ -138,12 +138,16 @@ jobs:
             # Create a Docker network if it doesn't exist
             sudo docker network create app-network 2>/dev/null || true
             
+            # Create uploads directory for persistent storage
+            mkdir -p $PROJECT_DIR/server/uploads
+            
             # Start backend container with OAuth environment variables
             sudo docker run -d \
               --name backend \
               --network app-network \
               -p 5002:5002 \
               --env-file .env \
+              -v $PROJECT_DIR/server/uploads:/app/uploads \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
@@ -199,6 +203,7 @@ jobs:
               --network app-network \
               -p 5002:5002 \
               --env-file .env \
+              -v $PROJECT_DIR/server/uploads:/app/uploads \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
@@ -209,6 +214,7 @@ jobs:
                 --network app-network \
                 -p 5002:5002 \
                 --env-file .env \
+                -v $PROJECT_DIR/server/uploads:/app/uploads \
                 -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
                 -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
                 -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
