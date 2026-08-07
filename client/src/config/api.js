@@ -1,6 +1,6 @@
 // API Configuration
 // Use relative paths to leverage nginx proxy (no CORS issues)
-export const API_BASE_URL = '';
+export const API_BASE_URL = 'https://api.adihuman.com';
 
 export const API_ENDPOINTS = {
   catalog: `${API_BASE_URL}/api/catalog`,
