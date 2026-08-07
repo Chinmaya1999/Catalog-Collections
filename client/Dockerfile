@@ -22,11 +22,11 @@ FROM nginx:alpine
 # Copy built assets from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configuration (ensure this file exists)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose ports 80 and 443
-EXPOSE 80 443
+# Expose port 80
+EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

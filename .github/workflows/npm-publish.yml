@@ -18,15 +18,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: List directory structure (for debugging)
+      - name: Debug directory structure
         run: |
           echo "Current directory: $(pwd)"
-          echo "Directory contents:"
+          echo "Root directory contents:"
           ls -la
-          echo "Checking for server directory:"
-          ls -la server || echo "server directory not found"
-          echo "Checking for client directory:"
-          ls -la client || echo "client directory not found"
+          echo "Checking server directory:"
+          ls -la server/ || echo "server directory not found"
+          echo "Checking for package files in server:"
+          ls -la server/package*.json || echo "Missing package files"
+          echo "Checking client directory:"
+          ls -la client/ || echo "client directory not found"
+          echo "Checking for nginx.conf:"
+          ls -la client/nginx.conf || echo "nginx.conf not found in client"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -40,7 +44,7 @@ jobs:
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./server
           file: ./server/Dockerfile
           push: true
           tags: |
@@ -56,13 +60,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: List directory structure (for debugging)
+      - name: Debug frontend files
         run: |
           echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          echo "Checking for client directory:"
-          ls -la client || echo "client directory not found"
+          echo "Checking client directory:"
+          ls -la client/ || echo "client directory not found"
+          echo "Checking for package files in client:"
+          ls -la client/package*.json || echo "Missing package files"
+          echo "Checking for nginx.conf:"
+          ls -la client/nginx.conf || echo "nginx.conf not found"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -76,7 +82,7 @@ jobs:
       - name: Build and push Frontend
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./client
           file: ./client/Dockerfile
           push: true
           tags: |
@@ -102,7 +108,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # Use ec2-user's home directory instead of root
+            # Use ec2-user's home directory
             PROJECT_DIR="/home/ec2-user/Catalog-Collections"
             
             # Check if project exists, if not clone it
@@ -119,8 +125,8 @@ jobs:
             git pull origin main
             
             # Stop and remove old containers
-            sudo docker stop backend frontend || true
-            sudo docker rm backend frontend || true
+            sudo docker stop backend frontend 2>/dev/null || true
+            sudo docker rm backend frontend 2>/dev/null || true
             
             # Pull latest images
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
@@ -129,9 +135,13 @@ jobs:
             # Create .env file from GitHub secret
             echo "${{ secrets.ENV_FILE }}" > .env
             
+            # Create a Docker network if it doesn't exist
+            sudo docker network create app-network 2>/dev/null || true
+            
             # Start backend container with OAuth environment variables
             sudo docker run -d \
               --name backend \
+              --network app-network \
               -p 5002:5002 \
               --env-file .env \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
@@ -143,6 +153,7 @@ jobs:
             # Start frontend container
             sudo docker run -d \
               --name frontend \
+              --network app-network \
               -p 3000:80 \
               ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
             
@@ -172,25 +183,30 @@ jobs:
             echo "Attempting rollback..."
             
             # Stop current containers
-            sudo docker stop backend frontend || true
-            sudo docker rm backend frontend || true
+            sudo docker stop backend frontend 2>/dev/null || true
+            sudo docker rm backend frontend 2>/dev/null || true
+            
+            # Create network if it doesn't exist
+            sudo docker network create app-network 2>/dev/null || true
             
             # Try to pull previous version
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous || echo "No previous version found"
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous || echo "No previous version found"
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous 2>/dev/null || echo "No previous version found"
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous 2>/dev/null || echo "No previous version found"
             
-            # Start containers with previous version (or fallback to current if previous not available)
+            # Start containers with previous version (or fallback to latest if previous not available)
             sudo docker run -d \
               --name backend \
+              --network app-network \
               -p 5002:5002 \
               --env-file .env \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
               -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-              ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous || \
+              ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous 2>/dev/null || \
               sudo docker run -d \
                 --name backend \
+                --network app-network \
                 -p 5002:5002 \
                 --env-file .env \
                 -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
@@ -201,10 +217,12 @@ jobs:
 
             sudo docker run -d \
               --name frontend \
+              --network app-network \
               -p 3000:80 \
-              ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous || \
+              ${{ secrets.DOCKER_USERNAME }}/catalog-client:previous 2>/dev/null || \
               sudo docker run -d \
                 --name frontend \
+                --network app-network \
                 -p 3000:80 \
                 ${{ secrets.DOCKER_USERNAME }}/catalog-client:latest
             
