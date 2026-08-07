@@ -30,8 +30,8 @@ jobs:
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./server
+          file: ./server/Dockerfile
           push: true
           tags: |
             awsmallick1999/catalog-server:latest
@@ -58,8 +58,8 @@ jobs:
       - name: Build and push Frontend
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
+          context: ./client
+          file: ./client/Dockerfile
           push: true
           tags: |
             awsmallick1999/catalog-client:latest
