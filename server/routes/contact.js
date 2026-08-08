@@ -144,7 +144,7 @@ router.post('/', [
               <p style="color: #FFD700; margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">
                 ADIHUMAN
               </p>
-              <p style="color: #888888; margin: 0 0 25px; font-size: 14px; font-weight: 400;">
+              <p style="color: #473a3a; margin: 0 0 25px; font-size: 14px; font-weight: 400;">
                 Premium Customized Products & Solutions
               </p>
               <div style="margin: 25px 0; padding: 20px; background-color: #1a1a1a; border-radius: 12px; border: 1px solid #333;">
