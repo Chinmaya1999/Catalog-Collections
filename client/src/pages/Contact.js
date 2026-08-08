@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle } from 'lucide-react';
+import { API_ENDPOINTS } from '../config/api';
 
 const Contact = memo(() => {
   const [formData, setFormData] = useState({
@@ -9,6 +10,8 @@ const Contact = memo(() => {
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -17,15 +20,37 @@ const Contact = memo(() => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real application, you would send this data to a backend
-    console.log('Form submitted:', formData);
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: '', email: '', message: '' });
-    }, 3000);
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(API_ENDPOINTS.contact, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitted(true);
+        setFormData({ name: '', email: '', message: '' });
+        setTimeout(() => {
+          setSubmitted(false);
+        }, 3000);
+      } else {
+        setError(data.message || 'Failed to send message. Please try again.');
+      }
+    } catch (err) {
+      setError('Network error. Please try again later.');
+      console.error('Error submitting form:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +94,11 @@ const Contact = memo(() => {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    {error && (
+                      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+                        {error}
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Name
@@ -116,10 +146,20 @@ const Contact = memo(() => {
                     
                     <button
                       type="submit"
-                      className="w-full btn-primary flex items-center justify-center gap-2"
+                      disabled={loading}
+                      className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send className="w-5 h-5" />
-                      Submit
+                      {loading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Submit
+                        </>
+                      )}
                     </button>
                   </form>
                 )}

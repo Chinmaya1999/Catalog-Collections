@@ -116,6 +116,7 @@ const catalogRoutes = require('./routes/catalog');
 const categoryRoutes = require('./routes/category');
 const adminRoutes = require('./routes/admin');
 const vendorRoutes = require('./routes/vendor');
+const contactRoutes = require('./routes/contact');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -123,6 +124,7 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
+app.use('/api/contact', contactRoutes);
 
 // ==================== Health Check ====================
 app.get('/api/health', (req, res) => {
