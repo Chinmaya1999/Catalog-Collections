@@ -1,6 +1,7 @@
 import React, { useState, memo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
@@ -108,6 +109,17 @@ const Catalog = memo(() => {
                 className="input-field pl-12"
               />
             </div>
+          </div>
+
+          {/* Catalog Request Button */}
+          <div className="text-center">
+            <Link
+              to="/catalog-request"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-yellow to-brand-gold text-brand-dark px-6 py-3 rounded-xl font-bold hover:from-brand-gold hover:to-brand-yellow transition-all shadow-lg"
+            >
+              <FileText className="w-5 h-5" />
+              Request a Catalog
+            </Link>
           </div>
         </div>
       </section>

@@ -8,6 +8,7 @@ export const API_ENDPOINTS = {
   admin: `${API_BASE_URL}/api/admin`,
   vendor: `${API_BASE_URL}/api/vendor`,
   contact: `${API_BASE_URL}/api/contact`,
+  catalogRequest: `${API_BASE_URL}/api/catalog-request`,
   health: `${API_BASE_URL}/api/health`
 };
 

@@ -93,6 +93,10 @@ const Home = memo(() => {
                   Explore Catalog
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Link>
+                <Link to="/catalog-request" className="btn-secondary inline-flex items-center">
+                  <Gift className="mr-2 w-5 h-5" />
+                  Request Products
+                </Link>
                 <Link to="/contact" className="btn-secondary inline-flex items-center">
                   Contact Sales
                 </Link>

@@ -8,7 +8,11 @@ import {
   Phone,
   DollarSign,
   Package,
-  FileText
+  FileText,
+  Gift,
+  CheckCircle,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
@@ -17,6 +21,7 @@ import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('catalogs');
   const [catalogs, setCatalogs] = useState([]);
+  const [catalogRequests, setCatalogRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -64,6 +69,18 @@ const AdminDashboard = () => {
       const catalogsRes = await fetch(API_ENDPOINTS.catalog);
       const catalogsData = await catalogsRes.json();
       setCatalogs(catalogsData);
+
+      // Fetch catalog requests
+      const token = localStorage.getItem('adminToken');
+      const requestsRes = await fetch(API_ENDPOINTS.catalogRequest, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (requestsRes.ok) {
+        const requestsData = await requestsRes.json();
+        setCatalogRequests(requestsData);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -196,6 +213,20 @@ const AdminDashboard = () => {
             <Search className="w-5 h-5" />
             Find Vendors
           </button>
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
+              activeTab === 'requests' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Gift className="w-5 h-5" />
+            Catalog Requests
+            {catalogRequests.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {catalogRequests.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Catalogs Tab */}
@@ -203,6 +234,7 @@ const AdminDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
           >
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
@@ -257,6 +289,7 @@ const AdminDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
           >
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
@@ -418,7 +451,116 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
         )}
-      </div>
+
+        {/* Catalog Requests Tab */}
+        {activeTab === 'requests' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                <h2 className="text-2xl font-bold text-gray-900">Catalog Requests</h2>
+                <p className="text-gray-600 mt-1">View and manage catalog requests from users</p>
+              </div>
+              
+              {catalogRequests.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <Gift className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No catalog requests yet</p>
+                  <p className="text-gray-400 mt-2">Requests will appear here when users submit them</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {catalogRequests.map((request) => (
+                    <div key={request._id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h4 className="text-xl font-bold text-gray-900">
+                              {request.catalogCode}
+                            </h4>
+                            <span className={`px-3 py-1 text-sm font-bold rounded-full ${
+                              request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              request.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                              request.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Package className="w-5 h-5 text-blue-600" />
+                              <span className="font-medium">Catalog #: {request.catalogNumber}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Phone className="w-5 h-5 text-green-600" />
+                              <span className="font-medium">{request.phoneNumber}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Clock className="w-5 h-5 text-gray-600" />
+                              <span className="text-sm">
+                                {new Date(request.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {request.notes && (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                              <p className="text-sm text-gray-600"><strong>Notes:</strong> {request.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="ml-4 flex flex-col gap-2">
+                          <a
+                            href={`tel:${request.phoneNumber}`}
+                            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all shadow-lg text-sm"
+                          >
+                            <Phone className="w-4 h-4" />
+                            Call
+                          </a>
+                          <select
+                            value={request.status}
+                            onChange={async (e) => {
+                              try {
+                                const token = localStorage.getItem('adminToken');
+                                const response = await fetch(`${API_ENDPOINTS.catalogRequest}/${request._id}`, {
+                                  method: 'PUT',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                  },
+                                  body: JSON.stringify({ status: e.target.value })
+                                });
+                                if (response.ok) {
+                                  fetchData();
+                                }
+                              } catch (error) {
+                                console.error('Error updating status:', error);
+                              }
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
       {/* PDF Viewer Modal */}
       {showPDFViewer && currentPDF && (
@@ -428,6 +570,7 @@ const AdminDashboard = () => {
           onClose={() => setShowPDFViewer(false)}
         />
       )}
+      </div>
     </div>
   );
 };
