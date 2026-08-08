@@ -49,7 +49,7 @@ router.post('/', [
             <!-- Header with Logo -->
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center;">
               <div style="background-color: #ffffff; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <img src="https://adihuman.com/images/logo.png" alt="Adihuman Logo" style="width: 60px; height: 60px; object-fit: contain;">
+                <img src="https://catalog.adihuman.com/images/logo.png" alt="Adihuman Logo" style="width: 60px; height: 60px; object-fit: contain;">
               </div>
               <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 New Contact Form Submission
