@@ -8,7 +8,7 @@ const authMiddleware = require('../middleware/auth');
 router.get('/catalog/all', authMiddleware, async (req, res) => {
   try {
     const vendors = await Vendor.find({ active: true })
-      .populate('catalogId', 'name categoryName')
+      .populate('catalogId', 'name categoryName priceRange')
       .sort({ createdAt: -1 });
     res.json(vendors);
   } catch (error) {
@@ -21,6 +21,7 @@ router.get('/catalog/:catalogId', authMiddleware, async (req, res) => {
   try {
     const { catalogId } = req.params;
     const vendors = await Vendor.find({ catalogId, active: true })
+      .populate('catalogId', 'name categoryName priceRange')
       .sort({ createdAt: -1 });
     res.json(vendors);
   } catch (error) {
@@ -44,7 +45,7 @@ router.get('/product/:productCode', async (req, res) => {
       ],
       active: true 
     })
-      .populate('catalogId', 'name categoryName pdfFile');
+      .populate('catalogId', 'name categoryName pdfFile priceRange');
     
     console.log(`Found ${vendors.length} vendors for product code ${productCode}`);
     
@@ -127,6 +128,9 @@ router.post('/', authMiddleware, async (req, res) => {
       productCode,
       productCodes,
       price,
+      minPrice,
+      maxPrice,
+      currency,
       transportCharges
     } = req.body;
 
@@ -180,6 +184,11 @@ router.post('/', authMiddleware, async (req, res) => {
       productCode: finalProductCode,
       productCodes: finalProductCodes,
       price,
+      priceRange: {
+        minPrice: minPrice || price,
+        maxPrice: maxPrice || price,
+        currency: currency || '₹'
+      },
       transportCharges
     });
 
@@ -208,6 +217,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
       productCode,
       productCodes,
       price,
+      minPrice,
+      maxPrice,
+      currency,
       transportCharges,
       active
     } = req.body;
@@ -231,6 +243,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
         productCode: finalProductCode,
         productCodes: finalProductCodes,
         price,
+        priceRange: {
+          minPrice: minPrice !== undefined ? minPrice : price,
+          maxPrice: maxPrice !== undefined ? maxPrice : price,
+          currency: currency || '₹'
+        },
         transportCharges,
         active
       },

@@ -69,6 +69,20 @@ const vendorSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  priceRange: {
+    minPrice: {
+      type: Number,
+      default: 0
+    },
+    maxPrice: {
+      type: Number,
+      default: 0
+    },
+    currency: {
+      type: String,
+      default: '₹'
+    }
+  },
   transportCharges: {
     type: Number,
     default: 0

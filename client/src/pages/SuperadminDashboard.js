@@ -78,6 +78,9 @@ const SuperadminDashboard = () => {
     productCodes: [], // Changed to array for multiple selection
     productCode: '', // Keep single for backward compatibility
     price: '',
+    minPrice: '',
+    maxPrice: '',
+    currency: '₹',
     transportCharges: '0'
   });
 
@@ -463,6 +466,9 @@ const SuperadminDashboard = () => {
       productCodes: allProductCodes, // Auto-select all product codes
       productCode: allProductCodes.length > 0 ? allProductCodes[0] : '', // Keep first for backward compatibility
       price: '',
+      minPrice: '',
+      maxPrice: '',
+      currency: '₹',
       transportCharges: '0'
     });
     setShowVendorModal(true);
@@ -490,6 +496,9 @@ const SuperadminDashboard = () => {
       productCode: vendor.productCode,
       productCodes: vendor.productCodes || [vendor.productCode], // Handle both old and new format
       price: vendor.price,
+      minPrice: vendor.priceRange?.minPrice || '',
+      maxPrice: vendor.priceRange?.maxPrice || '',
+      currency: vendor.priceRange?.currency || '₹',
       transportCharges: vendor.transportCharges
     });
     setShowVendorModal(true);
@@ -553,7 +562,10 @@ const SuperadminDashboard = () => {
       const vendorData = {
         ...vendorFormData,
         productCode: primaryProductCode,
-        productCodes: vendorFormData.productCodes.length > 0 ? vendorFormData.productCodes : [primaryProductCode]
+        productCodes: vendorFormData.productCodes.length > 0 ? vendorFormData.productCodes : [primaryProductCode],
+        minPrice: vendorFormData.minPrice || vendorFormData.price,
+        maxPrice: vendorFormData.maxPrice || vendorFormData.price,
+        currency: vendorFormData.currency || '₹'
       };
 
       console.log('Submitting vendor:', { url, method, data: vendorData });
@@ -1774,6 +1786,45 @@ const SuperadminDashboard = () => {
                       onChange={(e) => setVendorFormData({ ...vendorFormData, transportCharges: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                     />
+                  </div>
+                </div>
+
+                {/* Price Range Section */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Range (Optional)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Price</label>
+                      <input
+                        type="number"
+                        value={vendorFormData.minPrice}
+                        onChange={(e) => setVendorFormData({ ...vendorFormData, minPrice: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="Leave empty to use main price"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Maximum Price</label>
+                      <input
+                        type="number"
+                        value={vendorFormData.maxPrice}
+                        onChange={(e) => setVendorFormData({ ...vendorFormData, maxPrice: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="Leave empty to use main price"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Currency</label>
+                      <select
+                        value={vendorFormData.currency}
+                        onChange={(e) => setVendorFormData({ ...vendorFormData, currency: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                      >
+                        <option value="₹">₹ (INR)</option>
+                        <option value="$">$ (USD)</option>
+                        <option value="€">€ (EUR)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 

@@ -189,13 +189,15 @@ const AdminDashboard = () => {
   };
 
   // Handle vendor search from catalog requests
-  const handleRequestVendorSearch = async (catalogNumber) => {
+  const handleRequestVendorSearch = async (catalogNumber, requestId) => {
     const baseCode = extractBaseProductCode(catalogNumber);
+    
+    // Set searching state for this specific request
     setRequestVendorSearch({
-      ...requestVendorSearch,
       productCode: baseCode,
       searching: true,
-      results: []
+      results: [],
+      expandedRequestId: requestId
     });
 
     try {
@@ -212,29 +214,24 @@ const AdminDashboard = () => {
       
       console.log('Request vendor search results:', data);
       
-      if (response.ok) {
-        setRequestVendorSearch({
-          ...requestVendorSearch,
-          productCode: baseCode,
-          searching: false,
-          results: data
-        });
-      } else {
+      // Update results regardless of response status
+      setRequestVendorSearch({
+        productCode: baseCode,
+        searching: false,
+        results: response.ok ? data : [],
+        expandedRequestId: requestId
+      });
+      
+      if (!response.ok) {
         console.error('Request vendor search failed:', data.message);
-        setRequestVendorSearch({
-          ...requestVendorSearch,
-          productCode: baseCode,
-          searching: false,
-          results: []
-        });
       }
     } catch (error) {
       console.error('Error searching vendors for request:', error);
       setRequestVendorSearch({
-        ...requestVendorSearch,
         productCode: baseCode,
         searching: false,
-        results: []
+        results: [],
+        expandedRequestId: requestId
       });
     }
   };
@@ -476,7 +473,17 @@ const AdminDashboard = () => {
                               </div>
                               <div className="flex items-center gap-2 text-gray-700">
                                 <DollarSign className="w-5 h-5 text-green-600" />
-                                <span className="font-bold text-green-700">₹{vendor.price}</span>
+                                {vendor.catalogId?.priceRange && (vendor.catalogId.priceRange.minPrice > 0 || vendor.catalogId.priceRange.maxPrice > 0) ? (
+                                  <span className="font-bold text-green-700">
+                                    {vendor.catalogId.priceRange.currency}{vendor.catalogId.priceRange.minPrice} - {vendor.catalogId.priceRange.currency}{vendor.catalogId.priceRange.maxPrice}
+                                  </span>
+                                ) : vendor.priceRange && (vendor.priceRange.minPrice > 0 || vendor.priceRange.maxPrice > 0) ? (
+                                  <span className="font-bold text-green-700">
+                                    {vendor.priceRange.currency}{vendor.priceRange.minPrice} - {vendor.priceRange.currency}{vendor.priceRange.maxPrice}
+                                  </span>
+                                ) : (
+                                  <span className="font-bold text-green-700">₹{vendor.price}</span>
+                                )}
                                 {vendor.transportCharges > 0 && (
                                   <span className="text-gray-500">+ ₹{vendor.transportCharges} transport</span>
                                 )}
@@ -595,10 +602,7 @@ const AdminDashboard = () => {
                           {/* Find Vendor Button */}
                           <div className="mb-4">
                             <button
-                              onClick={() => {
-                                setRequestVendorSearch({ ...requestVendorSearch, expandedRequestId: request._id });
-                                handleRequestVendorSearch(request.catalogNumber);
-                              }}
+                              onClick={() => handleRequestVendorSearch(request.catalogNumber, request._id)}
                               disabled={requestVendorSearch.searching && requestVendorSearch.expandedRequestId === request._id}
                               className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg text-sm disabled:opacity-50"
                             >
@@ -608,29 +612,30 @@ const AdminDashboard = () => {
                           </div>
 
                           {/* Vendor Search Results */}
-                          {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length > 0 && (
+                          {requestVendorSearch.expandedRequestId === request._id && (
                             <div className="mt-4">
-                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
-                                <div className="px-4 py-3 bg-blue-100 border-b border-blue-200">
-                                  <h5 className="font-bold text-gray-900 flex items-center gap-2">
-                                    <Package className="w-5 h-5 text-blue-600" />
-                                    Found {requestVendorSearch.results.length} vendor(s) for {requestVendorSearch.productCode}
-                                  </h5>
-                                </div>
-                                <div className="p-4 space-y-4">
-                                  {requestVendorSearch.results.map((vendor, index) => (
-                                    <div key={vendor._id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-                                      <div className="p-4">
-                                        <div className="flex items-start justify-between mb-3">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                              <h6 className="font-bold text-lg text-gray-900">{vendor.name}</h6>
-                                              {vendor.distance !== null && vendor.distance !== undefined && (
-                                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
-                                                  <MapPin className="w-3 h-3 inline mr-1" />
-                                                  {vendor.distance} km
-                                                </span>
-                                              )}
+                              {requestVendorSearch.results.length > 0 ? (
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
+                                  <div className="px-4 py-3 bg-blue-100 border-b border-blue-200">
+                                    <h5 className="font-bold text-gray-900 flex items-center gap-2">
+                                      <Package className="w-5 h-5 text-blue-600" />
+                                      Found {requestVendorSearch.results.length} vendor(s) for {requestVendorSearch.productCode}
+                                    </h5>
+                                  </div>
+                                  <div className="p-4 space-y-4">
+                                    {requestVendorSearch.results.map((vendor, index) => (
+                                      <div key={vendor._id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                                        <div className="p-4">
+                                          <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <h6 className="font-bold text-lg text-gray-900">{vendor.name}</h6>
+                                                {vendor.distance !== null && vendor.distance !== undefined && (
+                                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                                    <MapPin className="w-3 h-3 inline mr-1" />
+                                                    {vendor.distance} km
+                                                  </span>
+                                                )}
                                             </div>
                                             <p className="text-sm text-gray-600 mb-2">{vendor.address}</p>
                                             <div className="flex flex-wrap gap-2 text-xs">
@@ -656,7 +661,17 @@ const AdminDashboard = () => {
                                             <DollarSign className="w-4 h-4 text-yellow-600" />
                                             <div>
                                               <p className="text-xs text-gray-500">Price</p>
-                                              <p className="text-sm font-bold text-gray-900">₹{vendor.price}</p>
+                                              {vendor.catalogId?.priceRange && (vendor.catalogId.priceRange.minPrice > 0 || vendor.catalogId.priceRange.maxPrice > 0) ? (
+                                                <p className="text-sm font-bold text-gray-900">
+                                                  {vendor.catalogId.priceRange.currency}{vendor.catalogId.priceRange.minPrice} - {vendor.catalogId.priceRange.currency}{vendor.catalogId.priceRange.maxPrice}
+                                                </p>
+                                              ) : vendor.priceRange && (vendor.priceRange.minPrice > 0 || vendor.priceRange.maxPrice > 0) ? (
+                                                <p className="text-sm font-bold text-gray-900">
+                                                  {vendor.priceRange.currency}{vendor.priceRange.minPrice} - {vendor.priceRange.currency}{vendor.priceRange.maxPrice}
+                                                </p>
+                                              ) : (
+                                                <p className="text-sm font-bold text-gray-900">₹{vendor.price}</p>
+                                              )}
                                             </div>
                                           </div>
                                           {vendor.transportCharges > 0 && (
@@ -706,20 +721,19 @@ const AdminDashboard = () => {
                                   ))}
                                 </div>
                               </div>
-                            </div>
-                          )}
-
-                          {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length === 0 && !requestVendorSearch.searching && (
-                            <div className="mt-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                  <Search className="w-6 h-6 text-gray-400" />
+                              ) : (
+                                <div className="mt-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                      <Search className="w-6 h-6 text-gray-400" />
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-gray-900">No vendors found</p>
+                                      <p className="text-sm text-gray-600">No vendors available for product code: {requestVendorSearch.productCode}</p>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-semibold text-gray-900">No vendors found</p>
-                                  <p className="text-sm text-gray-600">No vendors available for product code: {requestVendorSearch.productCode}</p>
-                                </div>
-                              </div>
+                              )}
                             </div>
                           )}
 
