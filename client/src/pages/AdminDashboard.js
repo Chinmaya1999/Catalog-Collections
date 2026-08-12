@@ -35,6 +35,14 @@ const AdminDashboard = () => {
   const [searching, setSearching] = useState(false);
   const [userLocation, setUserLocation] = useState({ latitude: '', longitude: '' });
   
+  // Catalog request vendor search state
+  const [requestVendorSearch, setRequestVendorSearch] = useState({
+    productCode: '',
+    searching: false,
+    results: [],
+    expandedRequestId: null
+  });
+  
   // PDF viewer state
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [currentPDF, setCurrentPDF] = useState(null);
@@ -173,6 +181,64 @@ const AdminDashboard = () => {
     }
   };
 
+  // Function to extract base product code (remove suffixes like 'a', 'b', etc.)
+  const extractBaseProductCode = (productCode) => {
+    if (!productCode) return '';
+    // Remove any trailing letters (a, b, c, etc.) and keep the base code
+    return productCode.replace(/[a-z]$/i, '').toUpperCase();
+  };
+
+  // Handle vendor search from catalog requests
+  const handleRequestVendorSearch = async (catalogNumber) => {
+    const baseCode = extractBaseProductCode(catalogNumber);
+    setRequestVendorSearch({
+      ...requestVendorSearch,
+      productCode: baseCode,
+      searching: true,
+      results: []
+    });
+
+    try {
+      let url = `${API_ENDPOINTS.vendor}/product/${baseCode}`;
+      
+      // Always include location if available
+      if (userLocation.latitude && userLocation.longitude) {
+        url += `?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
+      }
+
+      console.log('Searching vendors for request with URL:', url);
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log('Request vendor search results:', data);
+      
+      if (response.ok) {
+        setRequestVendorSearch({
+          ...requestVendorSearch,
+          productCode: baseCode,
+          searching: false,
+          results: data
+        });
+      } else {
+        console.error('Request vendor search failed:', data.message);
+        setRequestVendorSearch({
+          ...requestVendorSearch,
+          productCode: baseCode,
+          searching: false,
+          results: []
+        });
+      }
+    } catch (error) {
+      console.error('Error searching vendors for request:', error);
+      setRequestVendorSearch({
+        ...requestVendorSearch,
+        productCode: baseCode,
+        searching: false,
+        results: []
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -270,6 +336,22 @@ const AdminDashboard = () => {
                     <div className="p-5">
                       <h3 className="text-xl font-bold text-gray-900 mb-2">{catalog.name}</h3>
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">{catalog.description}</p>
+                      
+                      {/* Price Range Display */}
+                      {catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
+                        <div className="mb-3 p-2 bg-yellow-50 rounded-lg">
+                          <p className="text-xs font-semibold text-gray-900">
+                            {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
+                          </p>
+                        </div>
+                      ) : catalog.priceRange ? (
+                        <div className="mb-3 p-2 bg-yellow-50 rounded-lg">
+                          <p className="text-xs font-semibold text-gray-900">
+                            Price range available
+                          </p>
+                        </div>
+                      ) : null}
+                      
                       <div className="flex items-center justify-between">
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
                           {catalog.categoryName}
@@ -509,6 +591,71 @@ const AdminDashboard = () => {
                               </span>
                             </div>
                           </div>
+
+                          {/* Find Vendor Button */}
+                          <div className="mb-4">
+                            <button
+                              onClick={() => {
+                                setRequestVendorSearch({ ...requestVendorSearch, expandedRequestId: request._id });
+                                handleRequestVendorSearch(request.catalogNumber);
+                              }}
+                              disabled={requestVendorSearch.searching && requestVendorSearch.expandedRequestId === request._id}
+                              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg text-sm disabled:opacity-50"
+                            >
+                              <Search className="w-4 h-4" />
+                              {requestVendorSearch.searching && requestVendorSearch.expandedRequestId === request._id ? 'Finding Vendor...' : 'Find Vendor'}
+                            </button>
+                          </div>
+
+                          {/* Vendor Search Results */}
+                          {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length > 0 && (
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                              <h5 className="font-bold text-gray-900 mb-3">
+                                Found {requestVendorSearch.results.length} vendor(s) for {requestVendorSearch.productCode}
+                              </h5>
+                              <div className="space-y-3">
+                                {requestVendorSearch.results.map((vendor) => (
+                                  <div key={vendor._id} className="bg-white p-3 rounded-lg shadow-sm">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <h6 className="font-bold text-gray-900">{vendor.name}</h6>
+                                        <p className="text-sm text-gray-600">{vendor.address}</p>
+                                        <div className="flex items-center gap-4 mt-2 text-sm">
+                                          <span className="text-gray-700">
+                                            <Phone className="w-4 h-4 inline mr-1 text-green-600" />
+                                            {vendor.phone}
+                                          </span>
+                                          <span className="text-gray-700">
+                                            <DollarSign className="w-4 h-4 inline mr-1 text-green-600" />
+                                            ₹{vendor.price}
+                                          </span>
+                                          {vendor.distance !== null && vendor.distance !== undefined && (
+                                            <span className="text-gray-700">
+                                              <MapPin className="w-4 h-4 inline mr-1 text-blue-600" />
+                                              {vendor.distance} km
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={`tel:${vendor.phone}`}
+                                        className="ml-2 flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-bold hover:bg-green-600 transition-all"
+                                      >
+                                        <Phone className="w-3 h-3" />
+                                        Call
+                                      </a>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length === 0 && !requestVendorSearch.searching && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                              <p className="text-gray-600 text-sm">No vendors found for product code: {requestVendorSearch.productCode}</p>
+                            </div>
+                          )}
 
                           {request.notes && (
                             <div className="bg-gray-50 rounded-lg p-3 mb-4">
