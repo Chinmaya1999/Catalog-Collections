@@ -53,6 +53,17 @@ const SuperadminDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [importResults, setImportResults] = useState(null);
 
+  // Category form state
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    slug: '',
+    icon: '📁',
+    order: 0,
+    featured: false
+  });
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+
   const [catalogFormData, setCatalogFormData] = useState({
     name: '',
     description: '',
@@ -789,6 +800,89 @@ const SuperadminDashboard = () => {
     }
   };
 
+  // Category management functions
+  const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormData({
+      name: '',
+      slug: '',
+      icon: '📁',
+      order: 0,
+      featured: false
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setCategoryFormData({
+      name: category.name,
+      slug: category.slug,
+      icon: category.icon,
+      order: category.order,
+      featured: category.featured
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleCategorySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('adminToken');
+      const url = editingCategory
+        ? `${API_ENDPOINTS.category}/${editingCategory._id}`
+        : API_ENDPOINTS.category;
+
+      const method = editingCategory ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(categoryFormData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(editingCategory ? 'Category updated successfully' : 'Category created successfully');
+        setShowCategoryModal(false);
+        fetchData();
+      } else {
+        alert(`Error: ${data.message || 'Failed to save category'}`);
+      }
+    } catch (error) {
+      console.error('Error saving category:', error);
+      alert('Error saving category. Please try again.');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.category}/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('Category deleted successfully');
+        fetchData();
+      } else {
+        alert('Failed to delete category');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Error deleting category');
+    }
+  };
+
   const getVendorsForCatalog = (catalogId) => {
     return vendors.filter(v => {
       // Handle both string and ObjectId comparison
@@ -882,6 +976,15 @@ const SuperadminDashboard = () => {
           >
             <BarChart3 size={20} />
             Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
+              activeTab === 'categories' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Package size={20} />
+            Categories
           </button>
           {/* <button
             onClick={() => setActiveTab('all-vendors')}
@@ -1213,6 +1316,71 @@ const SuperadminDashboard = () => {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Categories Tab */}
+        {activeTab === 'categories' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Category Management</h2>
+                  <p className="text-gray-600 mt-1">Manage product categories for catalogs</p>
+                </div>
+                <button
+                  onClick={handleAddCategory}
+                  className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-6 py-3 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-lg"
+                >
+                  <Plus size={20} />
+                  Add Category
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {categories.map(category => (
+                    <div key={category._id} className="border-2 border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white hover:shadow-lg transition-all">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-4xl">{category.icon}</span>
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-lg">{category.name}</h3>
+                            <p className="text-sm text-gray-500">{category.slug}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                            title="Edit Category"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category._id)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
+                            title="Delete Category"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {category.featured && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full">
+                            Featured
+                          </span>
+                        )}
+                        <span className="text-sm text-gray-500">Order: {category.order}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -2029,6 +2197,101 @@ const SuperadminDashboard = () => {
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-lg"
                   >
                     {editingVendor ? 'Update Vendor' : 'Add Vendor'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Category Modal */}
+        {showCategoryModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {editingCategory ? 'Edit Category' : 'Add New Category'}
+                </h2>
+                <button
+                  onClick={() => setShowCategoryModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCategorySubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category Name</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.name}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                    placeholder="e.g., Customized T-shirt, Mug, Water Bottle"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Slug (URL-friendly name)</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.slug}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                    placeholder="e.g., customized-tshirt"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Icon (Emoji)</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.icon}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                    placeholder="e.g., 👕, 🎁, 🍼"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Display Order</label>
+                  <input
+                    type="number"
+                    value={categoryFormData.order}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, order: parseInt(e.target.value) })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                    placeholder="Lower numbers appear first"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={categoryFormData.featured}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, featured: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Featured Category</span>
+                  </label>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryModal(false)}
+                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-xl font-semibold hover:bg-gray-300 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-lg"
+                  >
+                    {editingCategory ? 'Update Category' : 'Add Category'}
                   </button>
                 </div>
               </form>
