@@ -1,6 +1,6 @@
 import React, { useState, memo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ExternalLink, FileText } from 'lucide-react';
+import { Search, ExternalLink, FileText, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
@@ -202,11 +202,38 @@ const Catalog = memo(() => {
                         <div className="p-6">
                           <h3 className="text-xl font-bold text-brand-dark mb-2">{catalog.name}</h3>
                           <p className="text-gray-600 text-sm mb-4">{catalog.description}</p>
-                          <div className="flex items-center justify-between">
+                          
+                          {/* Price Range Display */}
+                          {catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
+                            <div className="mb-4 p-3 bg-brand-yellow/10 rounded-lg">
+                              <p className="text-sm font-semibold text-brand-dark">
+                                Price Range: {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
+                              </p>
+                            </div>
+                          ) : catalog.priceRange ? (
+                            <div className="mb-4 p-3 bg-brand-yellow/10 rounded-lg">
+                              <p className="text-sm font-semibold text-brand-dark">
+                                Price range available
+                              </p>
+                            </div>
+                          ) : null}
+                          
+                          <div className="flex items-center justify-between mb-4">
                             <span className="text-brand-yellow font-semibold">
                               {catalog.comboCount > 0 ? `${catalog.comboCount} Items` : 'View Catalog'}
                             </span>
                             <ExternalLink className="w-5 h-5 text-brand-dark group-hover:translate-x-2 transition-transform" />
+                          </div>
+                          
+                          {/* Contact Button */}
+                          <div className="flex gap-2 pt-3 border-t">
+                            <Link
+                              to="/contact"
+                              className="flex-1 flex items-center justify-center gap-1 bg-brand-dark text-white px-3 py-2 rounded-lg hover:bg-gray-800 transition-all text-sm"
+                            >
+                              <Phone className="w-4 h-4" />
+                              Contact
+                            </Link>
                           </div>
                         </div>
                       </div>

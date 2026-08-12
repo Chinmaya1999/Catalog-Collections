@@ -61,7 +61,12 @@ router.post('/', auth, upload.none(), [
       new: req.body.new || false,
       ecoFriendly: req.body.ecoFriendly || false,
       order: req.body.order || 0,
-      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : []
+      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : [],
+      priceRange: {
+        minPrice: parseFloat(req.body.minPrice) || 0,
+        maxPrice: parseFloat(req.body.maxPrice) || 0,
+        currency: req.body.currency || '₹'
+      }
     };
 
     const catalog = new Catalog(catalogData);
@@ -99,7 +104,12 @@ router.put('/:id', auth, upload.none(), async (req, res) => {
       new: req.body.new !== undefined ? req.body.new : catalog.new,
       ecoFriendly: req.body.ecoFriendly !== undefined ? req.body.ecoFriendly : catalog.ecoFriendly,
       order: req.body.order || catalog.order,
-      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : catalog.products
+      products: req.body.products && req.body.products.trim() ? JSON.parse(req.body.products) : catalog.products,
+      priceRange: {
+        minPrice: req.body.minPrice !== undefined ? parseFloat(req.body.minPrice) : (catalog.priceRange?.minPrice || 0),
+        maxPrice: req.body.maxPrice !== undefined ? parseFloat(req.body.maxPrice) : (catalog.priceRange?.maxPrice || 0),
+        currency: req.body.currency || (catalog.priceRange?.currency || '₹')
+      }
     };
 
     const updatedCatalog = await Catalog.findByIdAndUpdate(

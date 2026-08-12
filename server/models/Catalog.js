@@ -56,6 +56,20 @@ const catalogSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  priceRange: {
+    minPrice: {
+      type: Number,
+      default: 0
+    },
+    maxPrice: {
+      type: Number,
+      default: 0
+    },
+    currency: {
+      type: String,
+      default: '₹'
+    }
+  },
   products: [{
     code: {
       type: String,

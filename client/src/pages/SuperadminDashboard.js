@@ -25,7 +25,6 @@ const SuperadminDashboard = () => {
   const [catalogs, setCatalogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [vendors, setVendors] = useState([]);
-  const [productCodes, setProductCodes] = useState([]);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState(null);
@@ -42,7 +41,6 @@ const SuperadminDashboard = () => {
   
   // Page-wise product code entry state
   const [pdfTotalPages, setPdfTotalPages] = useState(0);
-  const [currentPageEntry, setCurrentPageEntry] = useState(1);
   const [pageProductCodes, setPageProductCodes] = useState({});
   const [showPageEntryMode, setShowPageEntryMode] = useState(false);
 
@@ -60,7 +58,10 @@ const SuperadminDashboard = () => {
     new: false,
     ecoFriendly: false,
     products: [],
-    baseCodePattern: ''
+    baseCodePattern: '',
+    minPrice: '',
+    maxPrice: '',
+    currency: '₹'
   });
 
   const [vendorFormData, setVendorFormData] = useState({
@@ -118,7 +119,7 @@ const SuperadminDashboard = () => {
       const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
       if (codesRes.ok) {
         const codesData = await codesRes.json();
-        setProductCodes(codesData);
+        // Product codes are now available via catalog products
       }
 
       // Fetch all vendors
@@ -178,7 +179,10 @@ const SuperadminDashboard = () => {
       featured: catalog.featured,
       new: catalog.new,
       ecoFriendly: catalog.ecoFriendly,
-      products: catalog.products || []
+      products: catalog.products || [],
+      minPrice: catalog.priceRange?.minPrice || '',
+      maxPrice: catalog.priceRange?.maxPrice || '',
+      currency: catalog.priceRange?.currency || '₹'
     });
     setExtractedProducts(catalog.products || []);
     setShowCatalogModal(true);
@@ -260,7 +264,6 @@ const SuperadminDashboard = () => {
           console.log('Setting total pages:', data.totalPages);
           setPdfTotalPages(data.totalPages);
           setShowPageEntryMode(true);
-          setCurrentPageEntry(1);
           setPageProductCodes({});
           
           // Clear any auto-extracted products since we're doing manual entry
@@ -396,6 +399,9 @@ const SuperadminDashboard = () => {
       Object.keys(catalogFormData).forEach(key => {
         if (key === 'products') {
           formDataToSend.append(key, JSON.stringify(catalogFormData[key]));
+        } else if (key === 'minPrice' || key === 'maxPrice') {
+          // Ensure price values are sent as strings (server will parse them)
+          formDataToSend.append(key, catalogFormData[key] || '0');
         } else if (key !== 'pdfFile' && key !== 'image') {
           formDataToSend.append(key, catalogFormData[key]);
         }
@@ -426,7 +432,7 @@ const SuperadminDashboard = () => {
         const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
         if (codesRes.ok) {
           const codesData = await codesRes.json();
-          setProductCodes(codesData);
+          // Product codes are now available via catalog products
         }
       }
     } catch (error) {
@@ -1468,6 +1474,45 @@ const SuperadminDashboard = () => {
                     />
                     <span className="text-sm font-medium text-gray-700">Eco Friendly</span>
                   </label>
+                </div>
+
+                {/* Price Range Section */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Range</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Price</label>
+                      <input
+                        type="number"
+                        value={catalogFormData.minPrice}
+                        onChange={(e) => setCatalogFormData({ ...catalogFormData, minPrice: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Maximum Price</label>
+                      <input
+                        type="number"
+                        value={catalogFormData.maxPrice}
+                        onChange={(e) => setCatalogFormData({ ...catalogFormData, maxPrice: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Currency</label>
+                      <select
+                        value={catalogFormData.currency}
+                        onChange={(e) => setCatalogFormData({ ...catalogFormData, currency: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                      >
+                        <option value="₹">₹ (INR)</option>
+                        <option value="$">$ (USD)</option>
+                        <option value="€">€ (EUR)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-4 pt-4">

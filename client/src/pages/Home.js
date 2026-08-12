@@ -1,7 +1,7 @@
 import React, { useState, memo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Gift, ExternalLink } from 'lucide-react';
+import { ArrowRight, Gift, Phone } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
@@ -37,8 +37,6 @@ const Home = memo(() => {
     }
   };
 
-  const featuredProducts = React.useMemo(() => products.filter(p => p.featured), [products]);
-
   if (loading) {
     return (
       <div className="pt-20 min-h-screen bg-brand-light flex items-center justify-center">
@@ -49,25 +47,6 @@ const Home = memo(() => {
       </div>
     );
   }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { duration: 0.5 }
-    }
-  };
 
   return (
     <div className="pt-20">
@@ -180,9 +159,29 @@ const Home = memo(() => {
                   <div className="p-4">
                     <h4 className="font-semibold text-gray-900 mb-1">{catalog.name}</h4>
                     <p className="text-sm text-gray-500 line-clamp-2">{catalog.description}</p>
+                    
+                    {/* Price Range Display */}
+                    {catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
+                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
+                        <p className="text-xs font-semibold text-gray-900">
+                          {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
+                        </p>
+                      </div>
+                    ) : catalog.priceRange && (
+                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
+                        <p className="text-xs font-semibold text-gray-900">
+                          Price range available
+                        </p>
+                      </div>
+                    )}
+                    
                     <div className="mt-4 flex items-center gap-2">
                       <button onClick={() => setSelectedCatalog(catalog)} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">Preview</button>
                       <Link to="/catalog" className="px-3 py-2 bg-yellow-400 rounded-lg text-sm text-gray-900">Open</Link>
+                      <Link to="/contact" className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        Contact
+                      </Link>
                     </div>
                   </div>
                 </div>
