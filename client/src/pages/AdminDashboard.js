@@ -609,51 +609,117 @@ const AdminDashboard = () => {
 
                           {/* Vendor Search Results */}
                           {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length > 0 && (
-                            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                              <h5 className="font-bold text-gray-900 mb-3">
-                                Found {requestVendorSearch.results.length} vendor(s) for {requestVendorSearch.productCode}
-                              </h5>
-                              <div className="space-y-3">
-                                {requestVendorSearch.results.map((vendor) => (
-                                  <div key={vendor._id} className="bg-white p-3 rounded-lg shadow-sm">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <h6 className="font-bold text-gray-900">{vendor.name}</h6>
-                                        <p className="text-sm text-gray-600">{vendor.address}</p>
-                                        <div className="flex items-center gap-4 mt-2 text-sm">
-                                          <span className="text-gray-700">
-                                            <Phone className="w-4 h-4 inline mr-1 text-green-600" />
-                                            {vendor.phone}
-                                          </span>
-                                          <span className="text-gray-700">
-                                            <DollarSign className="w-4 h-4 inline mr-1 text-green-600" />
-                                            ₹{vendor.price}
-                                          </span>
-                                          {vendor.distance !== null && vendor.distance !== undefined && (
-                                            <span className="text-gray-700">
-                                              <MapPin className="w-4 h-4 inline mr-1 text-blue-600" />
-                                              {vendor.distance} km
-                                            </span>
+                            <div className="mt-4">
+                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
+                                <div className="px-4 py-3 bg-blue-100 border-b border-blue-200">
+                                  <h5 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <Package className="w-5 h-5 text-blue-600" />
+                                    Found {requestVendorSearch.results.length} vendor(s) for {requestVendorSearch.productCode}
+                                  </h5>
+                                </div>
+                                <div className="p-4 space-y-4">
+                                  {requestVendorSearch.results.map((vendor, index) => (
+                                    <div key={vendor._id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                                      <div className="p-4">
+                                        <div className="flex items-start justify-between mb-3">
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <h6 className="font-bold text-lg text-gray-900">{vendor.name}</h6>
+                                              {vendor.distance !== null && vendor.distance !== undefined && (
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                                  <MapPin className="w-3 h-3 inline mr-1" />
+                                                  {vendor.distance} km
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-2">{vendor.address}</p>
+                                            <div className="flex flex-wrap gap-2 text-xs">
+                                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                                {vendor.city}, {vendor.state}
+                                              </span>
+                                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                                {vendor.pincode}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                                          <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                                            <Phone className="w-4 h-4 text-green-600" />
+                                            <div>
+                                              <p className="text-xs text-gray-500">Phone</p>
+                                              <p className="text-sm font-semibold text-gray-900">{vendor.phone}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg">
+                                            <DollarSign className="w-4 h-4 text-yellow-600" />
+                                            <div>
+                                              <p className="text-xs text-gray-500">Price</p>
+                                              <p className="text-sm font-bold text-gray-900">₹{vendor.price}</p>
+                                            </div>
+                                          </div>
+                                          {vendor.transportCharges > 0 && (
+                                            <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
+                                              <Package className="w-4 h-4 text-orange-600" />
+                                              <div>
+                                                <p className="text-xs text-gray-500">Transport</p>
+                                                <p className="text-sm font-semibold text-gray-900">₹{vendor.transportCharges}</p>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {vendor.googleMapsLink && (
+                                            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                                              <MapPin className="w-4 h-4 text-blue-600" />
+                                              <a
+                                                href={vendor.googleMapsLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                                              >
+                                                Google Maps
+                                              </a>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                          <a
+                                            href={`tel:${vendor.phone}`}
+                                            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg font-bold hover:from-green-600 hover:to-green-700 transition-all shadow-md text-sm"
+                                          >
+                                            <Phone className="w-4 h-4" />
+                                            Call Now
+                                          </a>
+                                          {vendor.catalogId && vendor.catalogId.pdfFile && (
+                                            <button
+                                              onClick={() => handleViewProductPage(vendor.catalogId._id, requestVendorSearch.productCode)}
+                                              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md text-sm"
+                                            >
+                                              <FileText className="w-4 h-4" />
+                                              View Product
+                                            </button>
                                           )}
                                         </div>
                                       </div>
-                                      <a
-                                        href={`tel:${vendor.phone}`}
-                                        className="ml-2 flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-bold hover:bg-green-600 transition-all"
-                                      >
-                                        <Phone className="w-3 h-3" />
-                                        Call
-                                      </a>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           )}
 
                           {requestVendorSearch.expandedRequestId === request._id && requestVendorSearch.results.length === 0 && !requestVendorSearch.searching && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                              <p className="text-gray-600 text-sm">No vendors found for product code: {requestVendorSearch.productCode}</p>
+                            <div className="mt-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                  <Search className="w-6 h-6 text-gray-400" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-900">No vendors found</p>
+                                  <p className="text-sm text-gray-600">No vendors available for product code: {requestVendorSearch.productCode}</p>
+                                </div>
+                              </div>
                             </div>
                           )}
 
