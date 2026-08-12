@@ -8,15 +8,12 @@ import { API_ENDPOINTS, getImageUrl } from '../config/api';
 const Home = memo(() => {
   const [selectedCatalog, setSelectedCatalog] = useState(null);
   const [catalogs, setCatalogs] = useState([]);
-  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Search and filter state
-  const [featuredSearch, setFeaturedSearch] = useState('');
-  const [featuredCategory, setFeaturedCategory] = useState('');
-  const [productSearch, setProductSearch] = useState('');
-  const [productCategory, setProductCategory] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     fetchDynamicData();
@@ -29,13 +26,6 @@ const Home = memo(() => {
       if (catalogsRes.ok) {
         const catalogsData = await catalogsRes.json();
         setCatalogs(catalogsData);
-      }
-
-      // Fetch products (using catalogs with type 'product')
-      const productsRes = await fetch(API_ENDPOINTS.catalog);
-      if (productsRes.ok) {
-        const allData = await productsRes.json();
-        setProducts(allData.filter(item => item.type === 'product'));
       }
 
       // Fetch categories
@@ -126,44 +116,17 @@ const Home = memo(() => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">Why choose us?</h2>
-            <p className="text-gray-600 mt-2">Designed for businesses that want quality, speed and reliability.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card p-6 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Custom Branding</h4>
-              <p className="text-gray-500 text-sm">Personalize products with your logo and message.</p>
-            </div>
-            <div className="card p-6 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Bulk Pricing</h4>
-              <p className="text-gray-500 text-sm">Competitive rates for large orders.</p>
-            </div>
-            <div className="card p-6 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Fast Turnaround</h4>
-              <p className="text-gray-500 text-sm">Get catalogs and vendors quickly.</p>
-            </div>
-            <div className="card p-6 text-center">
-              <h4 className="font-semibold text-gray-900 mb-2">Trusted Vendors</h4>
-              <p className="text-gray-500 text-sm">Our vendors are vetted for quality.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+     
 
       {/* Catalog Preview */}
       <section className="py-20 bg-brand-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-bold text-gray-900">Featured Catalogs</h3>
+            <h3 className="text-2xl font-bold text-gray-900">Our Catalogs</h3>
             <Link to="/catalog" className="text-sm text-gray-600 hover:underline">View all catalogs</Link>
           </div>
 
-          {/* Search and Filter for Featured Catalogs */}
+          {/* Search and Filter */}
           <div className="mb-6 bg-white rounded-xl p-4 shadow-sm">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -172,16 +135,16 @@ const Home = memo(() => {
                   <input
                     type="text"
                     placeholder="Search catalogs by name or description..."
-                    value={featuredSearch}
-                    onChange={(e) => setFeaturedSearch(e.target.value)}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
               <div className="md:w-64">
                 <select
-                  value={featuredCategory}
-                  onChange={(e) => setFeaturedCategory(e.target.value)}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                 >
                   <option value="">All Categories</option>
@@ -195,12 +158,11 @@ const Home = memo(() => {
 
           <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {catalogs
-              .filter(catalog => catalog.featured)
               .filter(catalog => {
-                const matchesSearch = !featuredSearch || 
-                  catalog.name.toLowerCase().includes(featuredSearch.toLowerCase()) ||
-                  catalog.description.toLowerCase().includes(featuredSearch.toLowerCase());
-                const matchesCategory = !featuredCategory || catalog.category === featuredCategory;
+                const matchesSearch = !searchTerm || 
+                  catalog.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  catalog.description.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCategory = !selectedCategory || catalog.category === selectedCategory;
                 return matchesSearch && matchesCategory;
               })
               .slice(0, 6)
@@ -245,92 +207,32 @@ const Home = memo(() => {
         </div>
       </section>
 
-      {/* Product Catalogs Section */}
-      <section className="py-20 bg-white">
+       {/* Features Section */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-bold text-gray-900">Product Catalogs</h3>
-            <Link to="/catalog" className="text-sm text-gray-600 hover:underline">View all catalogs</Link>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900">Why choose us?</h2>
+            <p className="text-gray-600 mt-2">Designed for businesses that want quality, speed and reliability.</p>
           </div>
 
-          {/* Search and Filter for Product Catalogs */}
-          <div className="mb-6 bg-gray-50 rounded-xl p-4 shadow-sm">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search products by name or description..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-              <div className="md:w-64">
-                <select
-                  value={productCategory}
-                  onChange={(e) => setProductCategory(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat._id} value={cat._id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Custom Branding</h4>
+              <p className="text-gray-500 text-sm">Personalize products with your logo and message.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Bulk Pricing</h4>
+              <p className="text-gray-500 text-sm">Competitive rates for large orders.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Fast Turnaround</h4>
+              <p className="text-gray-500 text-sm">Get catalogs and vendors quickly.</p>
+            </div>
+            <div className="card p-6 text-center">
+              <h4 className="font-semibold text-gray-900 mb-2">Trusted Vendors</h4>
+              <p className="text-gray-500 text-sm">Our vendors are vetted for quality.</p>
             </div>
           </div>
-
-          <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products
-              .filter(catalog => {
-                const matchesSearch = !productSearch || 
-                  catalog.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                  catalog.description.toLowerCase().includes(productSearch.toLowerCase());
-                const matchesCategory = !productCategory || catalog.category === productCategory;
-                return matchesSearch && matchesCategory;
-              })
-              .slice(0, 6)
-              .map(catalog => (
-              <motion.div key={catalog._id} whileHover={{ y: -6 }}>
-                <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
-                  <div className="h-44 bg-gray-100 overflow-hidden">
-                    <img src={getImageUrl(catalog.image)} alt={catalog.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-4">
-                    <h4 className="font-semibold text-gray-900 mb-1">{catalog.name}</h4>
-                    <p className="text-sm text-gray-500 line-clamp-2">{catalog.description}</p>
-                    
-                    {/* Price Range Display */}
-                    {catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
-                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
-                        <p className="text-xs font-semibold text-gray-900">
-                          {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
-                        </p>
-                      </div>
-                    ) : catalog.priceRange && (
-                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
-                        <p className="text-xs font-semibold text-gray-900">
-                          Price range available
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="mt-4 flex items-center gap-2">
-                      <button onClick={() => setSelectedCatalog(catalog)} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">Preview</button>
-                      <Link to="/catalog" className="px-3 py-2 bg-yellow-400 rounded-lg text-sm text-gray-900">Open</Link>
-                      <Link to="/contact" className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        Contact
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
         </div>
       </section>
 
