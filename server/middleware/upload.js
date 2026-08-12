@@ -13,8 +13,9 @@ const categoriesDir = path.join(uploadsDir, 'categories');
 const catalogsDir = path.join(uploadsDir, 'catalogs');
 const filesDir = path.join(uploadsDir, 'files');
 const pdfsDir = path.join(uploadsDir, 'pdfs');
+const excelDir = path.join(uploadsDir, 'excel');
 
-[categoriesDir, catalogsDir, filesDir, pdfsDir].forEach(dir => {
+[categoriesDir, catalogsDir, filesDir, pdfsDir, excelDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -36,6 +37,8 @@ const storage = multer.diskStorage({
       uploadPath = pdfsDir;
     } else if (originalUrl.includes('/file')) {
       uploadPath = filesDir;
+    } else if (originalUrl.includes('/excel')) {
+      uploadPath = excelDir;
     }
     
     cb(null, uploadPath);
@@ -48,15 +51,16 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|pdf/;
+  const allowedTypes = /jpeg|jpg|png|gif|pdf|xlsx|xls/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const isImage = /jpeg|jpg|png|gif/.test(file.mimetype);
   const isPdf = file.mimetype === 'application/pdf';
+  const isExcel = file.mimetype.includes('spreadsheet') || file.mimetype.includes('excel') || file.mimetype.includes('xlsx') || file.mimetype.includes('xls');
 
-  if (extname && (isImage || isPdf)) {
+  if (extname && (isImage || isPdf || isExcel)) {
     cb(null, true);
   } else {
-    cb(new Error('Only images and PDFs are allowed'));
+    cb(new Error('Only images, PDFs, and Excel files are allowed'));
   }
 };
 

@@ -14,7 +14,10 @@ import {
   FileText,
   X,
   Navigation,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Download,
+  Upload,
+  BarChart3
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -43,6 +46,12 @@ const SuperadminDashboard = () => {
   const [pdfTotalPages, setPdfTotalPages] = useState(0);
   const [pageProductCodes, setPageProductCodes] = useState({});
   const [showPageEntryMode, setShowPageEntryMode] = useState(false);
+
+  // Analysis state
+  const [analysisData, setAnalysisData] = useState(null);
+  const [excelFile, setExcelFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [importResults, setImportResults] = useState(null);
 
   const [catalogFormData, setCatalogFormData] = useState({
     name: '',
@@ -621,6 +630,81 @@ const SuperadminDashboard = () => {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.vendor}/export/excel`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vendors_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to export Excel file');
+      }
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      alert('Error exporting Excel file');
+    }
+  };
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setExcelFile(file);
+    }
+  };
+
+  const handleImportExcel = async () => {
+    if (!excelFile) {
+      alert('Please select an Excel file first');
+      return;
+    }
+
+    setUploading(true);
+    setImportResults(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const formData = new FormData();
+      formData.append('excel', excelFile);
+
+      const response = await fetch(`${API_ENDPOINTS.vendor}/import/excel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setImportResults(data.results);
+        alert(`Import completed: ${data.results.success.length} successful, ${data.results.errors.length} failed`);
+        fetchData(); // Refresh data
+      } else {
+        alert(`Import failed: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+      alert('Error importing Excel file');
+    } finally {
+      setUploading(false);
+      setExcelFile(null);
+    }
+  };
+
   const handleGoogleMapsLink = async (e) => {
     const link = e.target.value;
     setVendorFormData({ ...vendorFormData, googleMapsLink: link });
@@ -789,6 +873,15 @@ const SuperadminDashboard = () => {
           >
             <MapPin size={20} />
             Vendors by Catalog
+          </button>
+          <button
+            onClick={() => setActiveTab('analysis')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
+              activeTab === 'analysis' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <BarChart3 size={20} />
+            Analysis
           </button>
           {/* <button
             onClick={() => setActiveTab('all-vendors')}
@@ -1025,6 +1118,101 @@ const SuperadminDashboard = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Analysis Tab */}
+        {activeTab === 'analysis' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                <h2 className="text-2xl font-bold text-gray-900">Catalog Analysis</h2>
+                <p className="text-gray-600 mt-1">Export and import vendor data via Excel</p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Export Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Download className="w-5 h-5 text-blue-600" />
+                    Export Vendor Data
+                  </h3>
+                  <p className="text-gray-600 mb-4">Download all vendor data as an Excel file with complete details including vendor information, catalog details, pricing, and contact information.</p>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download Excel File
+                  </button>
+                </div>
+
+                {/* Import Section */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-green-600" />
+                    Import Vendor Data
+                  </h3>
+                  <p className="text-gray-600 mb-4">Upload an Excel file with vendor data to bulk import vendors. The file should contain columns for vendor name, phone, address, catalog name, product codes, and pricing information.</p>
+                  
+                  <div className="mb-4">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleExcelUpload}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={handleImportExcel}
+                    disabled={!excelFile || uploading}
+                    className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Upload className="w-5 h-5" />
+                    {uploading ? 'Importing...' : 'Import Excel File'}
+                  </button>
+                </div>
+
+                {/* Import Results */}
+                {importResults && (
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Import Results</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="bg-white p-4 rounded-lg">
+                        <p className="text-sm text-gray-500">Total Rows</p>
+                        <p className="text-2xl font-bold text-gray-900">{importResults.total}</p>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500">Successfully Imported</p>
+                        <p className="text-2xl font-bold text-green-600">{importResults.success.length}</p>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500">Failed</p>
+                        <p className="text-2xl font-bold text-red-600">{importResults.errors.length}</p>
+                      </div>
+                    </div>
+                    
+                    {importResults.errors.length > 0 && (
+                      <div className="mt-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Failed Rows:</h4>
+                    <div className="max-h-48 overflow-y-auto bg-white rounded-lg p-2">
+                      {importResults.errors.map((error, index) => (
+                        <div key={index} className="text-sm p-2 border-b last:border-0">
+                          <span className="font-medium text-red-600">Row {error.row}:</span> {error.error}
+                          <span className="text-gray-500 ml-2">- {JSON.stringify(error.data)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

@@ -3,6 +3,8 @@ const router = express.Router();
 const Vendor = require('../models/Vendor');
 const Catalog = require('../models/Catalog');
 const authMiddleware = require('../middleware/auth');
+const upload = require('../middleware/upload');
+const XLSX = require('xlsx');
 
 // Get all vendors
 router.get('/catalog/all', authMiddleware, async (req, res) => {
@@ -407,5 +409,150 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const distance = R * c;
   return Math.round(distance * 100) / 100; // Round to 2 decimal places
 }
+
+// Export vendors to Excel (superadmin only)
+router.get('/export/excel', authMiddleware, async (req, res) => {
+  try {
+    const vendors = await Vendor.find({ active: true })
+      .populate('catalogId', 'name categoryName priceRange');
+    
+    // Create Excel data
+    const excelData = vendors.map(vendor => ({
+      'Vendor Name': vendor.name,
+      'Phone Number': vendor.phone,
+      'Address': vendor.address,
+      'City': vendor.city,
+      'State': vendor.state,
+      'Pincode': vendor.pincode,
+      'Catalog Name': vendor.catalogId?.name || 'N/A',
+      'Catalog Category': vendor.catalogId?.categoryName || 'N/A',
+      'Product Code': vendor.productCode,
+      'All Product Codes': vendor.productCodes?.join(', ') || vendor.productCode,
+      'Price': vendor.price,
+      'Price Range Min': vendor.priceRange?.minPrice || vendor.catalogId?.priceRange?.minPrice || 0,
+      'Price Range Max': vendor.priceRange?.maxPrice || vendor.catalogId?.priceRange?.maxPrice || 0,
+      'Currency': vendor.priceRange?.currency || vendor.catalogId?.priceRange?.currency || '₹',
+      'Transport Charges': vendor.transportCharges,
+      'Google Maps Link': vendor.googleMapsLink || 'N/A',
+      'Created Date': new Date(vendor.createdAt).toLocaleDateString()
+    }));
+    
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Vendors');
+    
+    // Generate buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    // Set headers for download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=vendors_export.xlsx');
+    
+    res.send(excelBuffer);
+  } catch (error) {
+    console.error('Error exporting vendors to Excel:', error);
+    res.status(500).json({ message: 'Error exporting vendors', error: error.message });
+  }
+});
+
+// Import vendors from Excel (superadmin only)
+router.post('/import/excel', authMiddleware, upload.single('excel'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No Excel file uploaded' });
+    }
+    
+    // Read Excel file
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    console.log(`Importing ${jsonData.length} vendors from Excel`);
+    
+    const results = {
+      success: [],
+      errors: [],
+      total: jsonData.length
+    };
+    
+    for (let i = 0; i < jsonData.length; i++) {
+      try {
+        const row = jsonData[i];
+        
+        // Validate required fields
+        if (!row['Vendor Name'] || !row['Phone Number'] || !row['City'] || !row['State'] || !row['Pincode']) {
+          results.errors.push({
+            row: i + 2,
+            data: row,
+            error: 'Missing required fields (Vendor Name, Phone Number, City, State, Pincode)'
+          });
+          continue;
+        }
+        
+        // Find catalog by name
+        const catalog = await Catalog.findOne({ name: row['Catalog Name'] });
+        if (!catalog) {
+          results.errors.push({
+            row: i + 2,
+            data: row,
+            error: `Catalog not found: ${row['Catalog Name']}`
+          });
+          continue;
+        }
+        
+        // Create vendor
+        const vendor = new Vendor({
+          name: row['Vendor Name'],
+          phone: row['Phone Number'],
+          address: row['Address'] || '',
+          city: row['City'],
+          state: row['State'],
+          pincode: row['Pincode'],
+          catalogId: catalog._id,
+          productCode: row['Product Code'] || '',
+          productCodes: row['All Product Codes'] ? row['All Product Codes'].split(',').map(code => code.trim()) : [row['Product Code'] || ''],
+          price: row['Price'] || 0,
+          priceRange: {
+            minPrice: row['Price Range Min'] || row['Price'] || 0,
+            maxPrice: row['Price Range Max'] || row['Price'] || 0,
+            currency: row['Currency'] || '₹'
+          },
+          transportCharges: row['Transport Charges'] || 0,
+          googleMapsLink: row['Google Maps Link'] || '',
+          location: { type: 'Point', coordinates: [0, 0] }
+        });
+        
+        await vendor.save();
+        results.success.push({
+          row: i + 2,
+          vendorName: vendor.name,
+          catalogName: catalog.name
+        });
+        
+      } catch (error) {
+        console.error(`Error importing row ${i + 2}:`, error);
+        results.errors.push({
+          row: i + 2,
+          data: jsonData[i],
+          error: error.message
+        });
+      }
+    }
+    
+    // Delete uploaded file
+    const fs = require('fs');
+    fs.unlinkSync(req.file.path);
+    
+    res.json({
+      message: 'Import completed',
+      results
+    });
+  } catch (error) {
+    console.error('Error importing vendors from Excel:', error);
+    res.status(500).json({ message: 'Error importing vendors', error: error.message });
+  }
+});
 
 module.exports = router;
