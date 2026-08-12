@@ -109,6 +109,89 @@ router.get('/product-codes', async (req, res) => {
   }
 });
 
+// Multi-field vendor search (public)
+router.get('/search', async (req, res) => {
+  try {
+    const { productCode, vendorName, location, phoneNumber, latitude, longitude } = req.query;
+    
+    console.log('Multi-field vendor search:', { productCode, vendorName, location, phoneNumber, latitude, longitude });
+    
+    // Build search query
+    const searchQuery = { active: true };
+    
+    if (productCode) {
+      searchQuery.$or = [
+        { productCode: { $regex: productCode, $options: 'i' } },
+        { productCodes: { $regex: productCode, $options: 'i' } }
+      ];
+    }
+    
+    if (vendorName) {
+      searchQuery.name = { $regex: vendorName, $options: 'i' };
+    }
+    
+    if (location) {
+      searchQuery.$or = searchQuery.$or || [];
+      searchQuery.$or.push(
+        { city: { $regex: location, $options: 'i' } },
+        { state: { $regex: location, $options: 'i' } },
+        { pincode: { $regex: location, $options: 'i' } },
+        { address: { $regex: location, $options: 'i' } }
+      );
+    }
+    
+    if (phoneNumber) {
+      searchQuery.phone = { $regex: phoneNumber, $options: 'i' };
+    }
+    
+    let vendors = await Vendor.find(searchQuery)
+      .populate('catalogId', 'name categoryName pdfFile priceRange');
+    
+    console.log(`Found ${vendors.length} vendors matching search criteria`);
+    
+    // Calculate distances if location is provided
+    if (latitude && longitude) {
+      const adminLocation = {
+        type: 'Point',
+        coordinates: [parseFloat(longitude), parseFloat(latitude)]
+      };
+      
+      vendors = vendors.map(vendor => {
+        if (vendor.location && vendor.location.coordinates && 
+            vendor.location.coordinates[0] !== 0 && vendor.location.coordinates[1] !== 0) {
+          const distance = calculateDistance(
+            adminLocation.coordinates[1],
+            adminLocation.coordinates[0],
+            vendor.location.coordinates[1],
+            vendor.location.coordinates[0]
+          );
+          return {
+            ...vendor.toObject(),
+            distance: distance
+          };
+        }
+        return {
+          ...vendor.toObject(),
+          distance: null
+        };
+      });
+      
+      // Sort by distance
+      vendors.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
+      });
+    }
+    
+    res.json(vendors);
+  } catch (error) {
+    console.error('Error in multi-field vendor search:', error);
+    res.status(500).json({ message: 'Error searching vendors', error: error.message });
+  }
+});
+
 // Create new vendor (admin only)
 router.post('/', authMiddleware, async (req, res) => {
   try {

@@ -28,6 +28,9 @@ const AdminDashboard = () => {
   // Vendor search state
   const [vendorSearch, setVendorSearch] = useState({
     productCode: '',
+    vendorName: '',
+    location: '',
+    phoneNumber: '',
     latitude: '',
     longitude: ''
   });
@@ -127,14 +130,22 @@ const AdminDashboard = () => {
     setSearchResults([]);
 
     try {
-      const { productCode, latitude, longitude } = vendorSearch;
-      let url = `${API_ENDPOINTS.vendor}/product/${productCode}`;
+      const { productCode, vendorName, location, phoneNumber, latitude, longitude } = vendorSearch;
+      
+      // Build search parameters
+      const searchParams = new URLSearchParams();
+      if (productCode) searchParams.append('productCode', productCode);
+      if (vendorName) searchParams.append('vendorName', vendorName);
+      if (location) searchParams.append('location', location);
+      if (phoneNumber) searchParams.append('phoneNumber', phoneNumber);
+      
+      let url = `${API_ENDPOINTS.vendor}/search?${searchParams.toString()}`;
       
       // Always include location if available
       if (userLocation.latitude && userLocation.longitude) {
-        url += `?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
+        url += `&latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
       } else if (latitude && longitude) {
-        url += `?latitude=${latitude}&longitude=${longitude}`;
+        url += `&latitude=${latitude}&longitude=${longitude}`;
       }
 
       console.log('Searching vendors with URL:', url);
@@ -379,8 +390,8 @@ const AdminDashboard = () => {
               {/* Search Form */}
               <div className="p-6">
                 <form onSubmit={handleVendorSearch} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Product Code</label>
                       <input
                         type="text"
@@ -388,10 +399,42 @@ const AdminDashboard = () => {
                         onChange={(e) => setVendorSearch({ ...vendorSearch, productCode: e.target.value })}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                         placeholder="Enter product code"
-                        required
                       />
                     </div>
-                    <div className="md:col-span-1">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Vendor Name</label>
+                      <input
+                        type="text"
+                        value={vendorSearch.vendorName}
+                        onChange={(e) => setVendorSearch({ ...vendorSearch, vendorName: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="Enter vendor name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
+                      <input
+                        type="text"
+                        value={vendorSearch.location}
+                        onChange={(e) => setVendorSearch({ ...vendorSearch, location: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="City, state, or pincode"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                      <input
+                        type="text"
+                        value={vendorSearch.phoneNumber}
+                        onChange={(e) => setVendorSearch({ ...vendorSearch, phoneNumber: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Your Location</label>
                       <div className="flex gap-2">
                         <input
@@ -411,7 +454,7 @@ const AdminDashboard = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="md:col-span-1 flex items-end">
+                    <div className="flex items-end">
                       <button
                         type="submit"
                         disabled={searching}
