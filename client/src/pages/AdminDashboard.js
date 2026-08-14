@@ -729,6 +729,14 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
+                          {/* Customer's Custom Message */}
+                          {request.message && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Customer Message</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{request.message}</p>
+                            </div>
+                          )}
+
                           {/* Find Vendor Button */}
                           <div className="mb-4">
                             <button
@@ -869,7 +877,7 @@ const AdminDashboard = () => {
 
                           {request.notes && (
                             <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                              <p className="text-sm text-gray-600"><strong>Notes:</strong> {request.notes}</p>
+                              <p className="text-sm text-gray-600"><strong>Admin Notes:</strong> {request.notes}</p>
                             </div>
                           )}
                         </div>

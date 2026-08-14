@@ -16,6 +16,12 @@ const catalogRequestSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  message: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 1000
+  },
   status: {
     type: String,
     enum: ['pending', 'contacted', 'completed', 'cancelled'],

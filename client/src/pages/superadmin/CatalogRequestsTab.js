@@ -52,7 +52,8 @@ const CatalogRequestsTab = () => {
       list = list.filter(r =>
         r.catalogCode?.toLowerCase().includes(q) ||
         r.catalogNumber?.toLowerCase().includes(q) ||
-        r.phoneNumber?.toLowerCase().includes(q)
+        r.phoneNumber?.toLowerCase().includes(q) ||
+        r.message?.toLowerCase().includes(q)
       );
     }
     return list;
@@ -130,7 +131,8 @@ const CatalogRequestsTab = () => {
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Catalog Number</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Phone</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Status</th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Notes</th>
+                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Customer Message</th>
+                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Admin Notes</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Requested</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Deleted</th>
                 </tr>
@@ -150,6 +152,9 @@ const CatalogRequestsTab = () => {
                       <span className={`px-3 py-1 text-xs font-bold rounded-full ${STATUS_STYLES[request.status] || 'bg-gray-100 text-gray-700'}`}>
                         {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={request.message}>
+                      {request.message || '—'}
                     </td>
                     <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={request.notes}>
                       {request.notes || '—'}

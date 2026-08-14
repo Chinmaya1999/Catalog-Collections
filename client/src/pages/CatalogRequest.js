@@ -9,7 +9,8 @@ const CatalogRequest = () => {
   const [formData, setFormData] = useState({
     catalogCode: '',
     catalogNumber: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    message: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +32,11 @@ const CatalogRequest = () => {
     } else if (!/^[0-9]{10,15}$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = 'Phone number must be 10-15 digits';
     }
-    
+
+    if (formData.message.length > 1000) {
+      newErrors.message = 'Message must be under 1000 characters';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -76,7 +81,8 @@ const CatalogRequest = () => {
         setFormData({
           catalogCode: '',
           catalogNumber: '',
-          phoneNumber: ''
+          phoneNumber: '',
+          message: ''
         });
       } else {
         console.error('Error submitting catalog request:', data);
@@ -211,6 +217,33 @@ const CatalogRequest = () => {
                 <p className="text-gray-500 text-sm mt-1">
                   We'll contact you on this number regarding your request
                 </p>
+              </div>
+
+              {/* Custom Message */}
+              <div>
+                <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Message <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  rows="4"
+                  maxLength="1000"
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.message ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all resize-none`}
+                  placeholder="Add any specific details, quantities, or questions you'd like us to know..."
+                />
+                <div className="flex items-center justify-between mt-1">
+                  {errors.message ? (
+                    <p className="text-red-500 text-sm">{errors.message}</p>
+                  ) : (
+                    <span />
+                  )}
+                  <p className="text-gray-400 text-xs">{formData.message.length}/1000</p>
+                </div>
               </div>
 
               {/* Submit Button */}
