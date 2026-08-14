@@ -5,6 +5,13 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+const superadminOnly = (req, res, next) => {
+  if (!req.admin || req.admin.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Superadmin access required' });
+  }
+  next();
+};
+
 // Create new catalog request (public)
 router.post('/', [
   body('catalogCode').trim().notEmpty().withMessage('Catalog code is required'),
@@ -38,14 +45,27 @@ router.post('/', [
   }
 });
 
-// Get all catalog requests (admin only)
+// Get all active (non-deleted) catalog requests (admin only)
 router.get('/', auth, async (req, res) => {
   try {
-    const catalogRequests = await CatalogRequest.find().sort({ createdAt: -1 });
+    const catalogRequests = await CatalogRequest.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(catalogRequests);
   } catch (error) {
     console.error('Error fetching catalog requests:', error);
     res.status(500).json({ message: 'Error fetching catalog requests' });
+  }
+});
+
+// Get every catalog request, including deleted ones (superadmin only)
+router.get('/all', auth, superadminOnly, async (req, res) => {
+  try {
+    const catalogRequests = await CatalogRequest.find()
+      .populate('deletedBy', 'username email')
+      .sort({ createdAt: -1 });
+    res.json(catalogRequests);
+  } catch (error) {
+    console.error('Error fetching all catalog requests:', error);
+    res.status(500).json({ message: 'Error fetching all catalog requests' });
   }
 });
 
@@ -92,6 +112,9 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // Delete catalog request (admin only)
+// This is a soft delete — the request is hidden from the admin's list but the
+// full record (requester phone number, catalog code/number, notes, etc.) is
+// kept and remains visible to superadmins in the Super Admin dashboard.
 router.delete('/:id', auth, async (req, res) => {
   try {
     const catalogRequest = await CatalogRequest.findById(req.params.id);
@@ -99,7 +122,10 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Catalog request not found' });
     }
 
-    await CatalogRequest.findByIdAndDelete(req.params.id);
+    catalogRequest.isDeleted = true;
+    catalogRequest.deletedAt = new Date();
+    catalogRequest.deletedBy = req.admin._id;
+    await catalogRequest.save();
 
     res.json({ message: 'Catalog request deleted successfully' });
   } catch (error) {

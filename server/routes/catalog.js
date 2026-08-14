@@ -199,10 +199,11 @@ async function extractProductsWithOCR(pdfPath, actualPageCount) {
   try {
     // First, try text extraction
     const dataBuffer = fs.readFileSync(pdfPath);
-    const data = await PDFParse(dataBuffer);
-    
+    const parser = new PDFParse({ data: dataBuffer });
+    const data = await parser.getText();
+    await parser.destroy();
+
     console.log(`PDF has ${actualPageCount} pages (from pdf-lib)`);
-    console.log(`PDF parse reports ${data.numpages} pages`);
     console.log(`Extracted text length: ${data.text.length} characters`);
     
     // Use the accurate page count from pdf-lib

@@ -131,7 +131,9 @@ router.post('/upload', auth, superadminOnly, upload.single('pdf'), async (req, r
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const totalPages = pdfDoc.getPageCount();
 
-    const parsed = await PDFParse(pdfBytes);
+    const parser = new PDFParse({ data: pdfBytes });
+    const parsed = await parser.getText();
+    await parser.destroy();
     const text = parsed.text || '';
 
     const { detectedType, confidence } = detectPdfType(text);

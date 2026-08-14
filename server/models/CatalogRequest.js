@@ -25,6 +25,17 @@ const catalogRequestSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
   createdAt: {
     type: Date,
     default: Date.now

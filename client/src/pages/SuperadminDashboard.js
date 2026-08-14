@@ -24,17 +24,20 @@ import {
   Sparkles,
   Database,
   Tag,
-  ArrowRight
+  ArrowRight,
+  Gift
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 import StatCard from './superadmin/StatCard';
 import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
+import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
   { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
+  { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
   { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
   { id: 'categories', label: 'Categories', description: 'Manage product categories for catalogs', icon: Tag }
@@ -990,8 +993,16 @@ const SuperadminDashboard = () => {
         }`}
       >
         <div className="px-6 py-6 border-b border-gray-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center font-bold text-gray-900 shrink-0">
-            A
+          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0 overflow-hidden">
+            <img
+              src="/images/logo.png"
+              alt="Adihuman Logo"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<span class="font-bold text-white">A</span>';
+              }}
+            />
           </div>
           <div className="min-w-0">
             <p className="font-bold text-lg leading-tight truncate">Adihuman</p>
@@ -1147,6 +1158,9 @@ const SuperadminDashboard = () => {
 
         {/* PDF Analysis Tab */}
         {activeTab === 'pdf-analysis' && <PdfAnalysisTab />}
+
+        {/* Catalog Requests Tab */}
+        {activeTab === 'catalog-requests' && <CatalogRequestsTab />}
 
         {/* Catalog Management Tab */}
         {activeTab === 'catalogs' && (

@@ -13,7 +13,8 @@ import {
   Clock,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
@@ -258,6 +259,33 @@ const AdminDashboard = () => {
     }
   };
 
+  // Deleting a catalog request only removes it from this list — the full
+  // record (requester phone number, catalog code/number, notes) is kept and
+  // stays visible to superadmins in the Super Admin dashboard.
+  const handleDeleteCatalogRequest = async (requestId) => {
+    if (!window.confirm('Delete this catalog request? It will be removed from this list, but the request data is kept for the Super Admin dashboard.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.catalogRequest}/${requestId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setCatalogRequests(prev => prev.filter(r => r._id !== requestId));
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(`Error: ${data.message || 'Failed to delete catalog request'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting catalog request:', error);
+      alert('Error deleting catalog request. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -293,8 +321,16 @@ const AdminDashboard = () => {
         }`}
       >
         <div className="px-6 py-6 border-b border-gray-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center font-bold text-gray-900 shrink-0">
-            A
+          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0 overflow-hidden">
+            <img
+              src="/images/logo.png"
+              alt="Adihuman Logo"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<span class="font-bold text-white">A</span>';
+              }}
+            />
           </div>
           <div className="min-w-0">
             <p className="font-bold text-lg leading-tight truncate">Adihuman</p>
@@ -873,6 +909,13 @@ const AdminDashboard = () => {
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                          <button
+                            onClick={() => handleDeleteCatalogRequest(request._id)}
+                            className="flex items-center justify-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-xl font-bold hover:bg-red-200 transition-all text-sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
                         </div>
                       </div>
                     </div>
