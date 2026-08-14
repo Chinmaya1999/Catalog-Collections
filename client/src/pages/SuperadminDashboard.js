@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  MapPin, 
-  Phone, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  MapPin,
+  Phone,
   DollarSign,
   Package,
   ChevronDown,
@@ -17,14 +17,35 @@ import {
   Image as ImageIcon,
   Download,
   Upload,
-  BarChart3
+  BarChart3,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Sparkles,
+  Database,
+  Tag,
+  ArrowRight
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
+import StatCard from './superadmin/StatCard';
+import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
+
+const NAV_ITEMS = [
+  { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
+  { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
+  { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
+  { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
+  { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
+  { id: 'categories', label: 'Categories', description: 'Manage product categories for catalogs', icon: Tag }
+];
 
 const SuperadminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('catalogs');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [pdfDocsCount, setPdfDocsCount] = useState(0);
   const [catalogs, setCatalogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -155,6 +176,23 @@ const SuperadminDashboard = () => {
         setVendors(vendorsData);
       } else {
         console.error('Failed to fetch vendors:', await vendorsRes.text());
+      }
+
+      // Fetch dashboard statistics
+      const dashboardRes = await fetch(`${API_ENDPOINTS.admin}/dashboard`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (dashboardRes.ok) {
+        setDashboardStats(await dashboardRes.json());
+      }
+
+      // Fetch PDF analysis document count
+      const pdfDocsRes = await fetch(API_ENDPOINTS.pdfAnalysis, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (pdfDocsRes.ok) {
+        const pdfDocs = await pdfDocsRes.json();
+        setPdfDocsCount(pdfDocs.length);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -926,76 +964,189 @@ const SuperadminDashboard = () => {
     );
   }
 
+  const currentNavItem = NAV_ITEMS.find(item => item.id === activeTab) || NAV_ITEMS[0];
+
+  const handleSignOut = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminInfo');
+    window.dispatchEvent(new Event('adminAuthChange'));
+    navigate('/admin/login');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Title */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Super Admin Dashboard</h1>
-            <p className="text-gray-600">Manage catalogs and vendor information</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — pinned to the viewport so it never scrolls with the page */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 h-screen bg-gray-900 text-white flex flex-col transform transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="px-6 py-6 border-b border-gray-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center font-bold text-gray-900 shrink-0">
+            A
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('adminToken');
-              localStorage.removeItem('adminInfo');
-              window.dispatchEvent(new Event('adminAuthChange'));
-              navigate('/admin/login');
-            }}
-            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl font-semibold hover:bg-gray-300 transition-all shadow-md"
-          >
-            Sign Out
+          <div className="min-w-0">
+            <p className="font-bold text-lg leading-tight truncate">Adihuman</p>
+            <p className="text-xs text-gray-400">Super Admin</p>
+          </div>
+          <button className="ml-auto lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)}>
+            <X size={22} />
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-4 mb-8">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === item.id
+                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-md'
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <item.icon size={20} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="px-4 py-4 border-t border-gray-800">
           <button
-            onClick={() => setActiveTab('catalogs')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'catalogs' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-300 hover:bg-gray-800 transition-all"
           >
-            <Package size={20} />
-            Catalog Management
+            <LogOut size={20} />
+            Sign Out
           </button>
-          <button
-            onClick={() => setActiveTab('vendors')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'vendors' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <MapPin size={20} />
-            Vendors by Catalog
-          </button>
-          <button
-            onClick={() => setActiveTab('analysis')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'analysis' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <BarChart3 size={20} />
-            Analysis
-          </button>
-          <button
-            onClick={() => setActiveTab('categories')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'categories' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <Package size={20} />
-            Categories
-          </button>
-          {/* <button
-            onClick={() => setActiveTab('all-vendors')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'all-vendors' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <MapPin size={20} />
-            All Vendors
-          </button> */}
         </div>
+      </aside>
+
+      {/* Main content — offset past the fixed sidebar on large screens */}
+      <div className="lg:pl-72 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 bg-white border-b px-4 sm:px-8 py-4 flex items-center gap-4">
+          <button className="lg:hidden text-gray-500" onClick={() => setSidebarOpen(true)}>
+            <Menu size={24} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{currentNavItem.label}</h1>
+            <p className="text-sm text-gray-500 hidden sm:block">{currentNavItem.description}</p>
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+              <StatCard
+                icon={Package}
+                label="Total Catalogs"
+                value={dashboardStats?.statistics?.totalCatalogs ?? catalogs.length}
+                color="yellow"
+                onClick={() => setActiveTab('catalogs')}
+              />
+              <StatCard
+                icon={MapPin}
+                label="Total Vendors"
+                value={vendors.length}
+                color="blue"
+                onClick={() => setActiveTab('vendors')}
+              />
+              <StatCard
+                icon={Tag}
+                label="Categories"
+                value={dashboardStats?.statistics?.totalCategories ?? categories.length}
+                color="purple"
+                onClick={() => setActiveTab('categories')}
+              />
+              <StatCard
+                icon={BarChart3}
+                label="Featured Catalogs"
+                value={dashboardStats?.statistics?.featuredCatalogs ?? 0}
+                color="pink"
+                onClick={() => setActiveTab('catalogs')}
+              />
+              <StatCard
+                icon={Sparkles}
+                label="PDFs Analyzed"
+                value={pdfDocsCount}
+                color="green"
+                onClick={() => setActiveTab('pdf-analysis')}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                  <h2 className="text-lg font-bold text-gray-900">Recent Catalogs</h2>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {(dashboardStats?.recentCatalogs || []).length === 0 ? (
+                    <p className="p-6 text-gray-400 text-center">No catalogs yet</p>
+                  ) : (
+                    dashboardStats.recentCatalogs.map(catalog => (
+                      <div key={catalog._id} className="flex items-center gap-4 px-6 py-4">
+                        {catalog.image && (
+                          <img
+                            src={getImageUrl(catalog.image)}
+                            alt={catalog.name}
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{catalog.name}</p>
+                          <p className="text-sm text-gray-500">{catalog.categoryName}</p>
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0">
+                          {new Date(catalog.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-3">
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Quick Actions</h2>
+                <button
+                  onClick={() => { setActiveTab('catalogs'); handleAddCatalog(); }}
+                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                >
+                  Add Catalog <ArrowRight size={16} />
+                </button>
+                <button
+                  onClick={() => setActiveTab('vendors')}
+                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                >
+                  Add Vendor <ArrowRight size={16} />
+                </button>
+                <button
+                  onClick={() => setActiveTab('pdf-analysis')}
+                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                >
+                  Upload PDF <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* PDF Analysis Tab */}
+        {activeTab === 'pdf-analysis' && <PdfAnalysisTab />}
 
         {/* Catalog Management Tab */}
         {activeTab === 'catalogs' && (
@@ -1554,8 +1705,10 @@ const SuperadminDashboard = () => {
             </div>
           </motion.div>
         )}
+        </main>
+      </div>
 
-        {/* Catalog Modal */}
+      {/* Catalog Modal */}
         {showCatalogModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <motion.div
@@ -2307,7 +2460,6 @@ const SuperadminDashboard = () => {
             onClose={() => setShowPDFViewer(false)}
           />
         )}
-      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { Loader2 } from 'lucide-react';
@@ -24,27 +24,39 @@ const LoadingSpinner = () => (
   </div>
 );
 
+// Admin and super admin dashboards have their own sidebar-based shell,
+// so the public site navbar/footer are hidden on those routes.
+const AppLayout = () => {
+  const location = useLocation();
+  const isDashboardRoute =
+    location.pathname.startsWith('/superadmin') || location.pathname === '/admin/dashboard';
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {!isDashboardRoute && <Navbar />}
+      <main className="flex-grow">
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/catalog-request" element={<CatalogRequest />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/superadmin/dashboard" element={<SuperadminDashboard />} />
+          </Routes>
+        </Suspense>
+      </main>
+      {!isDashboardRoute && <Footer />}
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-grow">
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/catalog-request" element={<CatalogRequest />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/superadmin/dashboard" element={<SuperadminDashboard />} />
-            </Routes>
-          </Suspense>
-        </main>
-        <Footer />
-      </div>
+      <AppLayout />
     </Router>
   );
 }

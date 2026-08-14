@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Box, 
+import {
+  Box,
   Search,
   MapPin,
   Navigation,
@@ -10,9 +10,10 @@ import {
   Package,
   FileText,
   Gift,
-  CheckCircle,
   Clock,
-  XCircle
+  Menu,
+  X,
+  LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
@@ -20,6 +21,8 @@ import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('catalogs');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminInfo, setAdminInfo] = useState(null);
   const [catalogs, setCatalogs] = useState([]);
   const [catalogRequests, setCatalogRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,12 +70,20 @@ const AdminDashboard = () => {
           navigate('/superadmin/dashboard');
           return;
         }
+        setAdminInfo(admin);
       } catch (err) {
         // ignore parse errors
       }
     }
     fetchData();
   }, [navigate]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminInfo');
+    window.dispatchEvent(new Event('adminAuthChange'));
+    navigate('/admin/login');
+  };
 
   const fetchData = async () => {
     try {
@@ -258,51 +269,91 @@ const AdminDashboard = () => {
     );
   }
 
+  const navItems = [
+    { id: 'catalogs', label: 'Catalogs', description: 'Browse available product catalogs', icon: Box },
+    { id: 'vendors', label: 'Find Vendors', description: 'Search for vendors by product code near your location', icon: Search },
+    { id: 'requests', label: 'Catalog Requests', description: 'View and manage catalog requests from users', icon: Gift, badge: catalogRequests.length }
+  ];
+  const currentNavItem = navItems.find(item => item.id === activeTab) || navItems[0];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Title */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">View catalogs and find product vendors</p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        {/* Tab Navigation */}
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab('catalogs')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'catalogs' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <Box className="w-5 h-5" />
-            View Catalogs
-          </button>
-          <button
-            onClick={() => setActiveTab('vendors')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'vendors' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <Search className="w-5 h-5" />
-            Find Vendors
-          </button>
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md ${
-              activeTab === 'requests' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <Gift className="w-5 h-5" />
-            Catalog Requests
-            {catalogRequests.length > 0 && (
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                {catalogRequests.length}
-              </span>
-            )}
+      {/* Sidebar — pinned to the viewport so it never scrolls with the page */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 h-screen bg-gray-900 text-white flex flex-col transform transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="px-6 py-6 border-b border-gray-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center font-bold text-gray-900 shrink-0">
+            A
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-lg leading-tight truncate">Adihuman</p>
+            <p className="text-xs text-gray-400">{adminInfo?.username || 'Admin'}</p>
+          </div>
+          <button className="ml-auto lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)}>
+            <X size={22} />
           </button>
         </div>
 
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === item.id
+                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-md'
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <item.icon size={20} />
+              <span className="flex-1 text-left">{item.label}</span>
+              {!!item.badge && (
+                <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                  activeTab === item.id ? 'bg-gray-900 text-white' : 'bg-red-500 text-white'
+                }`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="px-4 py-4 border-t border-gray-800">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-300 hover:bg-gray-800 transition-all"
+          >
+            <LogOut size={20} />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content — offset past the fixed sidebar on large screens */}
+      <div className="lg:pl-72 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 bg-white border-b px-4 sm:px-8 py-4 flex items-center gap-4">
+          <button className="lg:hidden text-gray-500" onClick={() => setSidebarOpen(true)}>
+            <Menu size={24} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{currentNavItem.label}</h1>
+            <p className="text-sm text-gray-500 hidden sm:block">{currentNavItem.description}</p>
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
         {/* Catalogs Tab */}
         {activeTab === 'catalogs' && (
           <motion.div
@@ -831,6 +882,8 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
         )}
+        </main>
+      </div>
 
       {/* PDF Viewer Modal */}
       {showPDFViewer && currentPDF && (
@@ -840,7 +893,6 @@ const AdminDashboard = () => {
           onClose={() => setShowPDFViewer(false)}
         />
       )}
-      </div>
     </div>
   );
 };
