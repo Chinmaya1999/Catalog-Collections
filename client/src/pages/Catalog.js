@@ -1,9 +1,117 @@
-import React, { useState, memo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, FileText, Phone, Tag, SearchX, X, LayoutGrid } from 'lucide-react';
+import {
+  Search,
+  ArrowRight,
+  FileText,
+  Phone,
+  Tag,
+  SearchX,
+  X,
+  LayoutGrid,
+  LayoutList,
+  Sparkles,
+  Leaf,
+  Package,
+  Heart,
+  Eye,
+  ArrowUpDown,
+  ChevronDown,
+  Layers,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
+import OrderCalculator from '../components/OrderCalculator';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
+
+const SAVED_KEY = 'catlog_saved_catalogs';
+
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'name-asc', label: 'Name: A to Z' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+];
+
+const loadSavedIds = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const persistSavedIds = (ids) => {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // ignore write failures (e.g. private browsing)
+  }
+};
+
+const CatalogSkeletonCard = () => (
+  <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 animate-pulse">
+    <div className="h-48 w-full bg-gray-200" />
+    <div className="p-5 space-y-3">
+      <div className="h-4 bg-gray-200 rounded w-3/4" />
+      <div className="h-3 bg-gray-100 rounded w-full" />
+      <div className="h-3 bg-gray-100 rounded w-5/6" />
+      <div className="h-6 bg-gray-100 rounded-full w-24" />
+      <div className="flex gap-2 pt-2">
+        <div className="h-10 bg-gray-200 rounded-xl flex-1" />
+        <div className="h-10 w-10 bg-gray-200 rounded-xl" />
+      </div>
+    </div>
+  </div>
+);
+
+const CatalogBadges = ({ catalog }) => (
+  <div className="flex flex-wrap gap-1">
+    {catalog.new && (
+      <span className="bg-brand-yellow text-brand-dark px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
+        NEW
+      </span>
+    )}
+    {catalog.featured && (
+      <span className="bg-brand-dark text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
+        <Sparkles className="w-2.5 h-2.5" />
+        FEATURED
+      </span>
+    )}
+    {catalog.ecoFriendly && (
+      <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
+        <Leaf className="w-2.5 h-2.5" />
+        ECO
+      </span>
+    )}
+    {catalog.comboCount > 0 && (
+      <span className="bg-white/90 text-gray-900 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
+        <Package className="w-2.5 h-2.5" />
+        {catalog.comboCount} ITEMS
+      </span>
+    )}
+  </div>
+);
+
+const CatalogPrice = ({ catalog }) => {
+  if (catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0)) {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 rounded-full">
+        <Tag className="w-3 h-3 text-brand-gold" />
+        <p className="text-xs font-semibold text-gray-900">
+          {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <span className="text-xs font-semibold text-gray-400">
+      {catalog.comboCount > 0 ? `${catalog.comboCount} items` : 'View catalog'}
+    </span>
+  );
+};
 
 const Catalog = memo(() => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -12,6 +120,11 @@ const Catalog = memo(() => {
   const [catalogs, setCatalogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [sortOption, setSortOption] = useState('featured');
+  const [viewMode, setViewMode] = useState('grid');
+  const [savedIds, setSavedIds] = useState(() => loadSavedIds());
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   useEffect(() => {
     fetchDynamicData();
@@ -39,21 +152,70 @@ const Catalog = memo(() => {
     }
   };
 
-  // Memoize filtered data for performance
-  const filteredCatalogs = React.useMemo(() => {
-    return catalogs.filter(catalog => {
-      const matchesSearch = catalog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           catalog.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = !selectedCategory || catalog.categoryName === selectedCategory;
-      return matchesSearch && matchesCategory;
+  const toggleSaved = (id) => {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      persistSavedIds(next);
+      return next;
     });
-  }, [searchQuery, selectedCategory, catalogs]);
+  };
 
-  const hasActiveFilters = !!selectedCategory || !!searchQuery;
+  // How many catalogs live in each category, for the filter chips
+  const categoryCounts = useMemo(() => {
+    return catalogs.reduce((acc, catalog) => {
+      acc[catalog.categoryName] = (acc[catalog.categoryName] || 0) + 1;
+      return acc;
+    }, {});
+  }, [catalogs]);
+
+  const featuredCatalogs = useMemo(() => catalogs.filter((c) => c.featured), [catalogs]);
+
+  // Search + category + saved filters
+  const baseFilteredCatalogs = useMemo(() => {
+    return catalogs.filter((catalog) => {
+      const matchesSearch =
+        !searchQuery ||
+        catalog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        catalog.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = !selectedCategory || catalog.categoryName === selectedCategory;
+      const matchesSaved = !showSavedOnly || savedIds.has(catalog._id);
+      return matchesSearch && matchesCategory && matchesSaved;
+    });
+  }, [catalogs, searchQuery, selectedCategory, showSavedOnly, savedIds]);
+
+  // Sort on top of the filtered set
+  const filteredCatalogs = useMemo(() => {
+    const list = [...baseFilteredCatalogs];
+    switch (sortOption) {
+      case 'newest':
+        list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case 'name-asc':
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'price-low':
+        list.sort((a, b) => (a.priceRange?.minPrice || 0) - (b.priceRange?.minPrice || 0));
+        break;
+      case 'price-high':
+        list.sort((a, b) => (b.priceRange?.minPrice || 0) - (a.priceRange?.minPrice || 0));
+        break;
+      default:
+        list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    }
+    return list;
+  }, [baseFilteredCatalogs, sortOption]);
+
+  const hasActiveFilters = !!selectedCategory || !!searchQuery || showSavedOnly;
 
   const clearFilters = () => {
     setSelectedCategory(null);
     setSearchQuery('');
+    setShowSavedOnly(false);
   };
 
   const containerVariants = {
@@ -77,10 +239,15 @@ const Catalog = memo(() => {
 
   if (loading) {
     return (
-      <div className="pt-20 min-h-screen bg-brand-light flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-yellow mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading catalog...</p>
+      <div className="pt-20 min-h-screen bg-brand-light">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="h-8 bg-gray-200 rounded-full w-56 mx-auto mb-6 animate-pulse" />
+          <div className="h-10 bg-gray-200 rounded-2xl w-2/3 mx-auto mb-10 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <CatalogSkeletonCard key={i} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -101,9 +268,15 @@ const Catalog = memo(() => {
             transition={{ duration: 0.5 }}
             className="text-center"
           >
-            <div className="inline-flex items-center gap-2 bg-white border border-brand-yellow/40 text-brand-dark px-4 py-1.5 rounded-full text-sm font-semibold mb-5 shadow-sm">
-              <LayoutGrid className="w-4 h-4 text-brand-gold" />
-              {catalogs.length}+ Catalogs Available
+            <div className="inline-flex flex-wrap items-center justify-center gap-2 mb-5">
+              <span className="inline-flex items-center gap-2 bg-white border border-brand-yellow/40 text-brand-dark px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">
+                <LayoutGrid className="w-4 h-4 text-brand-gold" />
+                {catalogs.length}+ Catalogs Available
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white border border-brand-yellow/40 text-brand-dark px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">
+                <Layers className="w-4 h-4 text-brand-gold" />
+                {categories.length}+ Categories
+              </span>
             </div>
 
             <h1 className="text-4xl md:text-5xl font-display font-extrabold text-gray-900 mb-4 leading-tight">
@@ -150,6 +323,57 @@ const Catalog = memo(() => {
         </div>
       </section>
 
+      {/* Featured Catalogs strip */}
+      {featuredCatalogs.length > 0 && (
+        <section className="bg-white border-y border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-brand-gold" />
+              <h2 className="text-lg font-display font-bold text-gray-900">Featured Catalogs</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
+              {featuredCatalogs.map((catalog) => (
+                <button
+                  key={catalog._id}
+                  onClick={() => setSelectedCatalog(catalog)}
+                  className="group relative shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-shadow text-left bg-white"
+                >
+                  <div className="relative h-32 w-full bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden">
+                    <img
+                      src={getImageUrl(catalog.image)}
+                      alt={catalog.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <span className="absolute top-2 left-2 bg-brand-dark text-white px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-0.5">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      FEATURED
+                    </span>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-bold text-gray-900 line-clamp-1">{catalog.name}</p>
+                    <div className="mt-1.5">
+                      <CatalogPrice catalog={catalog} />
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Bulk Pricing Calculator */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5 }}
+        >
+          <OrderCalculator catalogs={catalogs} categories={categories} />
+        </motion.div>
+      </section>
+
       {/* Sticky category filter bar */}
       <div className="sticky top-20 z-20 bg-white/90 backdrop-blur-md border-y border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -176,8 +400,30 @@ const Catalog = memo(() => {
               >
                 <span>{category.icon}</span>
                 {category.name}
+                {categoryCounts[category.name] > 0 && (
+                  <span
+                    className={`text-xs ${
+                      selectedCategory === category.name ? 'text-white/70' : 'text-gray-400'
+                    }`}
+                  >
+                    {categoryCounts[category.name]}
+                  </span>
+                )}
               </button>
             ))}
+            {savedIds.size > 0 && (
+              <button
+                onClick={() => setShowSavedOnly((prev) => !prev)}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                  showSavedOnly
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+                }`}
+              >
+                <Heart className={`w-3.5 h-3.5 ${showSavedOnly ? 'fill-white' : 'fill-rose-500'}`} />
+                Saved ({savedIds.size})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -195,18 +441,62 @@ const Catalog = memo(() => {
               </>
             )}
           </p>
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Clear filters
-            </button>
-          )}
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Sort */}
+            <div className="relative">
+              <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="pl-8 pr-8 py-2 rounded-full border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    Sort: {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-full transition-all ${
+                  viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                }`}
+                aria-label="Grid view"
+                title="Grid view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-full transition-all ${
+                  viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                }`}
+                aria-label="List view"
+                title="List view"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Catalogs Grid */}
+        {/* Catalogs Grid / List */}
         <AnimatePresence mode="wait">
           {filteredCatalogs.length === 0 ? (
             <motion.div
@@ -227,7 +517,7 @@ const Catalog = memo(() => {
                 </button>
               )}
             </motion.div>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <motion.div
               key="grid"
               variants={containerVariants}
@@ -239,34 +529,51 @@ const Catalog = memo(() => {
                 <motion.div key={catalog._id} variants={itemVariants} whileHover={{ y: -6 }}>
                   <div className="group bg-white rounded-2xl shadow-md hover:shadow-2xl overflow-hidden border border-gray-100 transition-shadow duration-300 h-full flex flex-col">
                     {/* Image */}
-                    <button
-                      onClick={() => setSelectedCatalog(catalog)}
-                      className="relative h-48 w-full bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden text-left"
-                    >
-                      <div className="absolute top-3 left-3 z-10 flex gap-2">
+                    <div className="relative h-48 w-full bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedCatalog(catalog)}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedCatalog(catalog)}
+                        className="absolute inset-0 z-10 cursor-pointer"
+                        aria-label={`Preview ${catalog.name}`}
+                      />
+                      <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start max-w-[75%]">
                         {catalog.categoryName && (
                           <span className="bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-900 px-2.5 py-1 rounded-full shadow-sm">
                             {catalog.categoryName}
                           </span>
                         )}
+                        <CatalogBadges catalog={catalog} />
                       </div>
-                      {catalog.new && (
-                        <span className="absolute top-3 right-3 z-10 bg-brand-yellow text-brand-dark px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">
-                          NEW
-                        </span>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSaved(catalog._id);
+                        }}
+                        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+                        aria-label={savedIds.has(catalog._id) ? 'Remove from saved' : 'Save catalog'}
+                        title={savedIds.has(catalog._id) ? 'Remove from saved' : 'Save catalog'}
+                      >
+                        <Heart
+                          className={`w-4 h-4 ${
+                            savedIds.has(catalog._id) ? 'fill-rose-500 text-rose-500' : 'text-gray-500'
+                          }`}
+                        />
+                      </button>
                       <img
                         src={getImageUrl(catalog.image)}
                         alt={catalog.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 pointer-events-none">
                         <span className="text-white text-sm font-semibold inline-flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
                           Preview catalog
                           <ArrowRight className="w-4 h-4" />
                         </span>
                       </div>
-                    </button>
+                    </div>
 
                     {/* Content */}
                     <div className="p-5 flex flex-col flex-1">
@@ -274,18 +581,7 @@ const Catalog = memo(() => {
                       <p className="text-gray-500 text-sm mb-3 line-clamp-2 flex-1">{catalog.description}</p>
 
                       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-                        {catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 rounded-full">
-                            <Tag className="w-3 h-3 text-brand-gold" />
-                            <p className="text-xs font-semibold text-gray-900">
-                              {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-semibold text-gray-400">
-                            {catalog.comboCount > 0 ? `${catalog.comboCount} items` : 'View catalog'}
-                          </span>
-                        )}
+                        <CatalogPrice catalog={catalog} />
                       </div>
 
                       {/* Actions */}
@@ -303,6 +599,89 @@ const Catalog = memo(() => {
                         >
                           <Phone className="w-4 h-4" />
                         </Link>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="list"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-col gap-4"
+            >
+              {filteredCatalogs.map((catalog) => (
+                <motion.div key={catalog._id} variants={itemVariants}>
+                  <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg overflow-hidden border border-gray-100 transition-shadow duration-300 flex flex-col sm:flex-row">
+                    {/* Image */}
+                    <div className="relative w-full sm:w-48 h-40 sm:h-auto shrink-0 bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedCatalog(catalog)}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedCatalog(catalog)}
+                        className="absolute inset-0 z-10 cursor-pointer"
+                        aria-label={`Preview ${catalog.name}`}
+                      />
+                      <img
+                        src={getImageUrl(catalog.image)}
+                        alt={catalog.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {catalog.new && (
+                        <span className="absolute top-2 right-2 z-20 bg-brand-yellow text-brand-dark px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                          {catalog.categoryName && (
+                            <span className="bg-gray-100 text-xs font-semibold text-gray-700 px-2.5 py-1 rounded-full">
+                              {catalog.categoryName}
+                            </span>
+                          )}
+                          <CatalogBadges catalog={catalog} />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">{catalog.name}</h3>
+                        <p className="text-gray-500 text-sm mb-2 line-clamp-2">{catalog.description}</p>
+                        <CatalogPrice catalog={catalog} />
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex sm:flex-col items-stretch gap-2 sm:w-40 shrink-0">
+                        <button
+                          onClick={() => setSelectedCatalog(catalog)}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-brand-yellow to-brand-gold text-brand-dark px-3 py-2.5 rounded-xl font-bold text-sm hover:shadow-md transition-all"
+                        >
+                          View Catalog
+                        </button>
+                        <div className="flex gap-2">
+                          <Link
+                            to="/contact"
+                            className="flex-1 flex items-center justify-center gap-1 bg-gray-900 text-white px-3 py-2.5 rounded-xl hover:bg-black transition-all text-sm"
+                            title="Contact us"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => toggleSaved(catalog._id)}
+                            className="shrink-0 w-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                            aria-label={savedIds.has(catalog._id) ? 'Remove from saved' : 'Save catalog'}
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${
+                                savedIds.has(catalog._id) ? 'fill-rose-500 text-rose-500' : 'text-gray-500'
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -62,3 +62,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #FFA500;
 }
+.max-w-7xl {
+max-width: 100rem;
+}

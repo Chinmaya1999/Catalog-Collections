@@ -18,6 +18,7 @@ import {
   SearchX,
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
+import OrderCalculatorWidget from '../components/OrderCalculatorWidget';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
 const stats = [
@@ -421,6 +422,9 @@ const Home = memo(() => {
           onClose={() => setSelectedCatalog(null)}
         />
       )}
+
+      {/* Floating "What do you want to order?" chat widget */}
+      <OrderCalculatorWidget catalogs={catalogs} categories={categories} />
     </div>
   );
 });
