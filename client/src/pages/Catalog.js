@@ -5,26 +5,23 @@ import {
   ArrowRight,
   FileText,
   Phone,
-  Tag,
   SearchX,
   X,
   LayoutGrid,
   LayoutList,
-  Sparkles,
-  Leaf,
-  Package,
   Heart,
-  Eye,
   ArrowUpDown,
   ChevronDown,
   Layers,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import OrderCalculator from '../components/OrderCalculator';
+import CatalogCard from '../components/CatalogCard';
+import FeaturedCatalogsStrip from '../components/FeaturedCatalogsStrip';
+import { CatalogSkeletonCard, CatalogBadges, CatalogPrice } from '../components/catalogDisplay';
+import { useSavedCatalogs } from '../hooks/useSavedCatalogs';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
-
-const SAVED_KEY = 'catlog_saved_catalogs';
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -34,87 +31,9 @@ const SORT_OPTIONS = [
   { value: 'price-high', label: 'Price: High to Low' },
 ];
 
-const loadSavedIds = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
-    return new Set(Array.isArray(stored) ? stored : []);
-  } catch {
-    return new Set();
-  }
-};
-
-const persistSavedIds = (ids) => {
-  try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify([...ids]));
-  } catch {
-    // ignore write failures (e.g. private browsing)
-  }
-};
-
-const CatalogSkeletonCard = () => (
-  <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 animate-pulse">
-    <div className="h-48 w-full bg-gray-200" />
-    <div className="p-5 space-y-3">
-      <div className="h-4 bg-gray-200 rounded w-3/4" />
-      <div className="h-3 bg-gray-100 rounded w-full" />
-      <div className="h-3 bg-gray-100 rounded w-5/6" />
-      <div className="h-6 bg-gray-100 rounded-full w-24" />
-      <div className="flex gap-2 pt-2">
-        <div className="h-10 bg-gray-200 rounded-xl flex-1" />
-        <div className="h-10 w-10 bg-gray-200 rounded-xl" />
-      </div>
-    </div>
-  </div>
-);
-
-const CatalogBadges = ({ catalog }) => (
-  <div className="flex flex-wrap gap-1">
-    {catalog.new && (
-      <span className="bg-brand-yellow text-brand-dark px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
-        NEW
-      </span>
-    )}
-    {catalog.featured && (
-      <span className="bg-brand-dark text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
-        <Sparkles className="w-2.5 h-2.5" />
-        FEATURED
-      </span>
-    )}
-    {catalog.ecoFriendly && (
-      <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
-        <Leaf className="w-2.5 h-2.5" />
-        ECO
-      </span>
-    )}
-    {catalog.comboCount > 0 && (
-      <span className="bg-white/90 text-gray-900 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-0.5">
-        <Package className="w-2.5 h-2.5" />
-        {catalog.comboCount} ITEMS
-      </span>
-    )}
-  </div>
-);
-
-const CatalogPrice = ({ catalog }) => {
-  if (catalog.priceRange && (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0)) {
-    return (
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 rounded-full">
-        <Tag className="w-3 h-3 text-brand-gold" />
-        <p className="text-xs font-semibold text-gray-900">
-          {catalog.priceRange.currency}{catalog.priceRange.minPrice} - {catalog.priceRange.currency}{catalog.priceRange.maxPrice}
-        </p>
-      </div>
-    );
-  }
-  return (
-    <span className="text-xs font-semibold text-gray-400">
-      {catalog.comboCount > 0 ? `${catalog.comboCount} items` : 'View catalog'}
-    </span>
-  );
-};
-
 const Catalog = memo(() => {
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCatalog, setSelectedCatalog] = useState(null);
   const [catalogs, setCatalogs] = useState([]);
@@ -123,7 +42,7 @@ const Catalog = memo(() => {
 
   const [sortOption, setSortOption] = useState('featured');
   const [viewMode, setViewMode] = useState('grid');
-  const [savedIds, setSavedIds] = useState(() => loadSavedIds());
+  const { savedIds, toggleSaved } = useSavedCatalogs();
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   useEffect(() => {
@@ -152,19 +71,6 @@ const Catalog = memo(() => {
     }
   };
 
-  const toggleSaved = (id) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      persistSavedIds(next);
-      return next;
-    });
-  };
-
   // How many catalogs live in each category, for the filter chips
   const categoryCounts = useMemo(() => {
     return catalogs.reduce((acc, catalog) => {
@@ -172,8 +78,6 @@ const Catalog = memo(() => {
       return acc;
     }, {});
   }, [catalogs]);
-
-  const featuredCatalogs = useMemo(() => catalogs.filter((c) => c.featured), [catalogs]);
 
   // Search + category + saved filters
   const baseFilteredCatalogs = useMemo(() => {
@@ -324,47 +228,10 @@ const Catalog = memo(() => {
       </section>
 
       {/* Featured Catalogs strip */}
-      {featuredCatalogs.length > 0 && (
+      {catalogs.some((c) => c.featured) && (
         <section className="bg-white border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-brand-gold" />
-              <h2 className="text-lg font-display font-bold text-gray-900">Featured Catalogs</h2>
-            </div>
-            <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_2rem,black_calc(100%-2rem),transparent)]">
-              <div
-                className="flex gap-4 w-max pb-2 animate-scroll-left"
-                style={{ animationDuration: `${Math.max(featuredCatalogs.length * 5, 18)}s` }}
-              >
-                {[...featuredCatalogs, ...featuredCatalogs].map((catalog, idx) => (
-                  <button
-                    key={`${catalog._id}-${idx}`}
-                    onClick={() => setSelectedCatalog(catalog)}
-                    aria-hidden={idx >= featuredCatalogs.length}
-                    tabIndex={idx >= featuredCatalogs.length ? -1 : 0}
-                    className="group relative shrink-0 w-56 rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-shadow text-left bg-white"
-                  >
-                    <div className="relative h-32 w-full bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden">
-                      <img
-                        src={getImageUrl(catalog.image)}
-                        alt={catalog.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      <span className="absolute top-2 left-2 bg-brand-dark text-white px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-0.5">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        FEATURED
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-bold text-gray-900 line-clamp-1">{catalog.name}</p>
-                      <div className="mt-1.5">
-                        <CatalogPrice catalog={catalog} />
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <FeaturedCatalogsStrip catalogs={catalogs} onPreview={setSelectedCatalog} />
           </div>
         </section>
       )}
@@ -533,83 +400,14 @@ const Catalog = memo(() => {
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             >
               {filteredCatalogs.map((catalog) => (
-                <motion.div key={catalog._id} variants={itemVariants} whileHover={{ y: -6 }}>
-                  <div className="group bg-white rounded-2xl shadow-md hover:shadow-2xl overflow-hidden border border-gray-100 transition-shadow duration-300 h-full flex flex-col">
-                    {/* Image */}
-                    <div className="relative h-48 w-full bg-gradient-to-br from-brand-yellow/20 to-brand-gold/20 overflow-hidden">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setSelectedCatalog(catalog)}
-                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedCatalog(catalog)}
-                        className="absolute inset-0 z-10 cursor-pointer"
-                        aria-label={`Preview ${catalog.name}`}
-                      />
-                      <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start max-w-[75%]">
-                        {catalog.categoryName && (
-                          <span className="bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-900 px-2.5 py-1 rounded-full shadow-sm">
-                            {catalog.categoryName}
-                          </span>
-                        )}
-                        <CatalogBadges catalog={catalog} />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSaved(catalog._id);
-                        }}
-                        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
-                        aria-label={savedIds.has(catalog._id) ? 'Remove from saved' : 'Save catalog'}
-                        title={savedIds.has(catalog._id) ? 'Remove from saved' : 'Save catalog'}
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            savedIds.has(catalog._id) ? 'fill-rose-500 text-rose-500' : 'text-gray-500'
-                          }`}
-                        />
-                      </button>
-                      <img
-                        src={getImageUrl(catalog.image)}
-                        alt={catalog.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 pointer-events-none">
-                        <span className="text-white text-sm font-semibold inline-flex items-center gap-1">
-                          <Eye className="w-4 h-4" />
-                          Preview catalog
-                          <ArrowRight className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5 flex flex-col flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 mb-1.5 line-clamp-1">{catalog.name}</h3>
-                      <p className="text-gray-500 text-sm mb-3 line-clamp-2 flex-1">{catalog.description}</p>
-
-                      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-                        <CatalogPrice catalog={catalog} />
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-3 border-t border-gray-100">
-                        <button
-                          onClick={() => setSelectedCatalog(catalog)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-brand-yellow to-brand-gold text-brand-dark px-3 py-2.5 rounded-xl font-bold text-sm hover:shadow-md transition-all"
-                        >
-                          View Catalog
-                        </button>
-                        <Link
-                          to="/contact"
-                          className="flex items-center justify-center gap-1 bg-gray-900 text-white px-3 py-2.5 rounded-xl hover:bg-black transition-all text-sm"
-                          title="Contact us"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+                <CatalogCard
+                  key={catalog._id}
+                  catalog={catalog}
+                  onPreview={setSelectedCatalog}
+                  isSaved={savedIds.has(catalog._id)}
+                  onToggleSave={toggleSaved}
+                  variants={itemVariants}
+                />
               ))}
             </motion.div>
           ) : (

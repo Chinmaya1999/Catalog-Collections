@@ -16,9 +16,14 @@ import {
   Zap,
   Package,
   SearchX,
+  Layers,
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import OrderCalculatorWidget from '../components/OrderCalculatorWidget';
+import CatalogCard from '../components/CatalogCard';
+import FeaturedCatalogsStrip from '../components/FeaturedCatalogsStrip';
+import { CatalogSkeletonCard } from '../components/catalogDisplay';
+import { useSavedCatalogs } from '../hooks/useSavedCatalogs';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
 const stats = [
@@ -51,11 +56,25 @@ const features = [
   },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
+};
+
 const Home = memo(() => {
   const [selectedCatalog, setSelectedCatalog] = useState(null);
   const [catalogs, setCatalogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { savedIds, toggleSaved } = useSavedCatalogs();
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,24 +106,47 @@ const Home = memo(() => {
     }
   };
 
-  const getCategoryName = (categoryId) =>
-    categories.find((cat) => cat._id === categoryId)?.name;
+  const categoryCatalogCount = (categoryName) =>
+    catalogs.filter((c) => c.categoryName === categoryName).length;
 
   const filteredCatalogs = catalogs.filter((catalog) => {
     const matchesSearch =
       !searchTerm ||
       catalog.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       catalog.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || catalog.category === selectedCategory;
+    const matchesCategory = !selectedCategory || catalog.categoryName === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
+  const viewAllCatalogsLink = selectedCategory
+    ? `/catalog?category=${encodeURIComponent(selectedCategory)}`
+    : '/catalog';
+
   if (loading) {
     return (
-      <div className="pt-20 min-h-screen bg-brand-light flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-yellow mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="pt-20 min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-7 space-y-4">
+              <div className="h-7 bg-gray-200 rounded-full w-52 animate-pulse" />
+              <div className="h-12 bg-gray-200 rounded-2xl w-full animate-pulse" />
+              <div className="h-12 bg-gray-200 rounded-2xl w-2/3 animate-pulse" />
+              <div className="h-4 bg-gray-100 rounded w-full animate-pulse mt-4" />
+              <div className="h-4 bg-gray-100 rounded w-4/5 animate-pulse" />
+              <div className="flex gap-4 mt-6">
+                <div className="h-12 bg-gray-200 rounded-lg w-40 animate-pulse" />
+                <div className="h-12 bg-gray-200 rounded-lg w-40 animate-pulse" />
+              </div>
+            </div>
+            <div className="lg:col-span-5">
+              <div className="h-80 bg-gray-200 rounded-2xl animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-20">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <CatalogSkeletonCard key={i} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -115,8 +157,16 @@ const Home = memo(() => {
       {/* Hero Section - Split Layout */}
       <section className="relative overflow-hidden bg-gradient-to-b from-brand-light to-white">
         {/* Decorative blobs */}
-        <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-brand-yellow/30 rounded-full blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 w-80 h-80 bg-brand-gold/20 rounded-full blur-3xl" />
+        <motion.div
+          className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-brand-yellow/30 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.08, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="pointer-events-none absolute -bottom-24 -left-24 w-80 h-80 bg-brand-gold/20 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <motion.div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -156,11 +206,17 @@ const Home = memo(() => {
                 </Link>
               </div>
 
-              <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4"
+              >
                 {stats.map(({ icon: Icon, value, label }) => (
-                  <div
+                  <motion.div
                     key={label}
-                    className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100"
+                    variants={itemVariants}
+                    className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                   >
                     <div className="w-9 h-9 shrink-0 rounded-lg bg-brand-yellow/15 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-brand-gold" />
@@ -169,9 +225,9 @@ const Home = memo(() => {
                       <p className="text-sm font-bold text-gray-900 leading-none">{value}</p>
                       <p className="text-xs text-gray-500 mt-1">{label}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -225,6 +281,62 @@ const Home = memo(() => {
         </div>
       </section>
 
+      {/* Shop by Category */}
+      {categories.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-brand-gold uppercase tracking-wider mb-2">
+                <span className="w-6 h-px bg-brand-gold" />
+                Browse
+                <span className="w-6 h-px bg-brand-gold" />
+              </div>
+              <h2 className="text-3xl font-display font-bold text-gray-900">Shop by Category</h2>
+              <p className="text-gray-600 mt-2">Jump straight to the products you need.</p>
+            </div>
+
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4"
+            >
+              {categories.map((cat) => {
+                const count = categoryCatalogCount(cat.name);
+                return (
+                  <motion.div key={cat._id} variants={itemVariants}>
+                    <Link
+                      to={`/catalog?category=${encodeURIComponent(cat.name)}`}
+                      className="group flex flex-col items-center gap-2 bg-brand-light hover:bg-white rounded-2xl border border-transparent hover:border-brand-yellow/50 hover:shadow-md p-5 text-center transition-all duration-300 h-full"
+                    >
+                      <span className="text-3xl group-hover:scale-110 transition-transform duration-300">
+                        {cat.icon}
+                      </span>
+                      <span className="font-semibold text-gray-900 text-sm">{cat.name}</span>
+                      {count > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {count} catalog{count === 1 ? '' : 's'}
+                        </span>
+                      )}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Featured Catalogs strip */}
+      {catalogs.some((c) => c.featured) && (
+        <section className="py-14 bg-brand-light border-y border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <FeaturedCatalogsStrip catalogs={catalogs} onPreview={setSelectedCatalog} />
+          </div>
+        </section>
+      )}
+
       {/* Catalog Preview */}
       <section className="py-20 bg-brand-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -237,7 +349,7 @@ const Home = memo(() => {
               <h3 className="text-2xl md:text-3xl font-display font-bold text-gray-900">Our Catalogs</h3>
             </div>
             <Link
-              to="/catalog"
+              to={viewAllCatalogsLink}
               className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 hover:text-brand-gold transition-colors"
             >
               View all catalogs
@@ -268,8 +380,8 @@ const Home = memo(() => {
                 >
                   <option value="">All Categories</option>
                   {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.name}
+                    <option key={cat._id} value={cat.name}>
+                      {cat.icon} {cat.name}
                     </option>
                   ))}
                 </select>
@@ -284,74 +396,22 @@ const Home = memo(() => {
               <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filter.</p>
             </div>
           ) : (
-            <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCatalogs.slice(0, 6).map((catalog) => {
-                const categoryName = getCategoryName(catalog.category);
-                return (
-                  <motion.div key={catalog._id} whileHover={{ y: -6 }}>
-                    <div className="group bg-white rounded-2xl shadow-md hover:shadow-xl overflow-hidden border border-gray-100 transition-shadow duration-300">
-                      <div className="relative h-44 bg-gray-100 overflow-hidden">
-                        <img
-                          src={getImageUrl(catalog.image)}
-                          alt={catalog.name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        {categoryName && (
-                          <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-900 px-2.5 py-1 rounded-full shadow-sm">
-                            {categoryName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h4 className="font-semibold text-gray-900 mb-1">{catalog.name}</h4>
-                        <p className="text-sm text-gray-500 line-clamp-2">{catalog.description}</p>
-
-                        {/* Price Range Display */}
-                        {catalog.priceRange &&
-                        (catalog.priceRange.minPrice > 0 || catalog.priceRange.maxPrice > 0) ? (
-                          <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 rounded-full">
-                            <Tag className="w-3 h-3 text-brand-gold" />
-                            <p className="text-xs font-semibold text-gray-900">
-                              {catalog.priceRange.currency}
-                              {catalog.priceRange.minPrice} - {catalog.priceRange.currency}
-                              {catalog.priceRange.maxPrice}
-                            </p>
-                          </div>
-                        ) : (
-                          catalog.priceRange && (
-                            <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 rounded-full">
-                              <Tag className="w-3 h-3 text-brand-gold" />
-                              <p className="text-xs font-semibold text-gray-900">Price range available</p>
-                            </div>
-                          )
-                        )}
-
-                        <div className="mt-4 flex items-center gap-2">
-                          <button
-                            onClick={() => setSelectedCatalog(catalog)}
-                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-                          >
-                            Preview
-                          </button>
-                          <Link
-                            to="/catalog"
-                            className="px-3 py-2 bg-yellow-400 hover:bg-yellow-500 rounded-lg text-sm font-medium text-gray-900 transition-colors"
-                          >
-                            Open
-                          </Link>
-                          <Link
-                            to="/contact"
-                            className="px-3 py-2 bg-gray-900 hover:bg-black text-white rounded-lg text-sm flex items-center gap-1 transition-colors"
-                          >
-                            <Phone className="w-3 h-3" />
-                            Contact
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredCatalogs.slice(0, 6).map((catalog) => (
+                <CatalogCard
+                  key={catalog._id}
+                  catalog={catalog}
+                  onPreview={setSelectedCatalog}
+                  isSaved={savedIds.has(catalog._id)}
+                  onToggleSave={toggleSaved}
+                  variants={itemVariants}
+                />
+              ))}
             </motion.div>
           )}
         </div>
@@ -370,20 +430,28 @@ const Home = memo(() => {
             <p className="text-gray-600 mt-2">Designed for businesses that want quality, speed and reliability.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
             {features.map(({ icon: Icon, title, description }) => (
-              <div
+              <motion.div
                 key={title}
-                className="card p-6 text-center hover:-translate-y-1 transform transition-transform duration-300"
+                variants={itemVariants}
+                whileHover={{ y: -6 }}
+                className="card p-6 text-center transition-shadow duration-300"
               >
-                <div className="w-14 h-14 bg-brand-yellow rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-brand-yellow to-brand-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
                   <Icon className="w-7 h-7 text-brand-dark" />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
                 <p className="text-gray-500 text-sm">{description}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -392,7 +460,17 @@ const Home = memo(() => {
         <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 w-72 h-72 bg-white/10 rounded-full" />
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.5 }}
+          className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
+        >
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm font-semibold text-brand-dark mb-4">
+            <Layers className="w-4 h-4" />
+            {catalogs.length}+ catalogs ready to explore
+          </div>
           <h3 className="text-3xl font-display font-bold text-gray-900 mb-4">Ready to scale your brand?</h3>
           <p className="text-gray-800 mb-8">Contact our team for a quick quote and catalog samples.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -411,7 +489,7 @@ const Home = memo(() => {
               Call Us Now
             </a>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* PDF Viewer Modal */}
