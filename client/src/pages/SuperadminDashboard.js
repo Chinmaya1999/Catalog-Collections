@@ -25,18 +25,21 @@ import {
   Database,
   Tag,
   ArrowRight,
-  Gift
+  Gift,
+  Megaphone
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 import StatCard from './superadmin/StatCard';
 import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
 import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
+import AnnouncementsTab from './superadmin/AnnouncementsTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
   { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
+  { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
   { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
@@ -1161,6 +1164,9 @@ const SuperadminDashboard = () => {
 
         {/* Catalog Requests Tab */}
         {activeTab === 'catalog-requests' && <CatalogRequestsTab />}
+
+        {/* Announcements Tab */}
+        {activeTab === 'announcements' && <AnnouncementsTab />}
 
         {/* Catalog Management Tab */}
         {activeTab === 'catalogs' && (

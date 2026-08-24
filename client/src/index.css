@@ -45,6 +45,111 @@
   }
 }
 
+@keyframes scroll-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-left {
+  animation-name: scroll-left;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.animate-scroll-left:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scroll-left {
+    animation-play-state: paused;
+  }
+}
+
+/* Festive offer particles (confetti / snow / fireworks / diyas) */
+@keyframes offer-fall {
+  0% {
+    transform: translateY(-20%) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(520%) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes offer-rise {
+  0% {
+    transform: translateY(20%) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-520%) scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes offer-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.offer-particle {
+  position: absolute;
+  top: 0;
+  animation-iteration-count: infinite;
+  pointer-events: none;
+  line-height: 1;
+  will-change: transform, opacity;
+}
+
+.offer-particle-fall {
+  animation-name: offer-fall;
+  animation-timing-function: linear;
+}
+
+.offer-particle-rise {
+  bottom: 0;
+  top: auto;
+  animation-name: offer-rise;
+  animation-timing-function: ease-in-out;
+}
+
+.offer-particle-twinkle {
+  animation-name: offer-twinkle;
+  animation-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-particle {
+    animation: none !important;
+    opacity: 0.5;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import FestiveOfferPopup from './components/FestiveOfferPopup';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load components for better performance
@@ -49,6 +50,7 @@ const AppLayout = () => {
         </Suspense>
       </main>
       {!isDashboardRoute && <Footer />}
+      {!isDashboardRoute && <FestiveOfferPopup />}
     </div>
   );
 };

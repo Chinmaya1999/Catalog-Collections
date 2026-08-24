@@ -119,6 +119,7 @@ const vendorRoutes = require('./routes/vendor');
 const contactRoutes = require('./routes/contact');
 const catalogRequestRoutes = require('./routes/catalogRequest');
 const pdfAnalysisRoutes = require('./routes/pdfAnalysis');
+const announcementRoutes = require('./routes/announcement');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -129,6 +130,7 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/catalog-request', catalogRequestRoutes);
 app.use('/api/pdf-analysis', pdfAnalysisRoutes);
+app.use('/api/announcement', announcementRoutes);
 
 // ==================== Health Check ====================
 app.get('/api/health', (req, res) => {
