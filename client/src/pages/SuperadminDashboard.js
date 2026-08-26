@@ -94,8 +94,8 @@ const SuperadminDashboard = () => {
   const [catalogFormData, setCatalogFormData] = useState({
     name: '',
     description: '',
-    category: '',
-    categoryName: '',
+    categories: [],
+    categoryNames: [],
     type: 'product',
     comboCount: 0,
     driveLink: '',
@@ -212,8 +212,8 @@ const SuperadminDashboard = () => {
     setCatalogFormData({
       name: '',
       description: '',
-      category: '',
-      categoryName: '',
+      categories: [],
+      categoryNames: [],
       type: 'product',
       comboCount: 0,
       driveLink: '',
@@ -236,8 +236,12 @@ const SuperadminDashboard = () => {
     setCatalogFormData({
       name: catalog.name,
       description: catalog.description,
-      category: catalog.category,
-      categoryName: catalog.categoryName,
+      categories: catalog.categories && catalog.categories.length > 0
+        ? catalog.categories
+        : (catalog.category ? [catalog.category] : []),
+      categoryNames: catalog.categoryNames && catalog.categoryNames.length > 0
+        ? catalog.categoryNames
+        : (catalog.categoryName ? [catalog.categoryName] : []),
       type: catalog.type,
       comboCount: catalog.comboCount,
       driveLink: catalog.driveLink,
@@ -464,7 +468,7 @@ const SuperadminDashboard = () => {
 
       const formDataToSend = new FormData();
       Object.keys(catalogFormData).forEach(key => {
-        if (key === 'products') {
+        if (key === 'products' || key === 'categories' || key === 'categoryNames') {
           formDataToSend.append(key, JSON.stringify(catalogFormData[key]));
         } else if (key === 'minPrice' || key === 'maxPrice') {
           // Ensure price values are sent as strings (server will parse them)
@@ -1123,7 +1127,7 @@ const SuperadminDashboard = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-900 truncate">{catalog.name}</p>
-                          <p className="text-sm text-gray-500">{catalog.categoryName}</p>
+                          <p className="text-sm text-gray-500">{(catalog.categoryNames || []).join(', ') || catalog.categoryName}</p>
                         </div>
                         <span className="text-xs text-gray-400 shrink-0">
                           {new Date(catalog.createdAt).toLocaleDateString()}
@@ -1219,9 +1223,13 @@ const SuperadminDashboard = () => {
                       <h3 className="text-xl font-bold text-gray-900 mb-2">{catalog.name}</h3>
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">{catalog.description}</p>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
-                          {catalog.categoryName}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {(catalog.categoryNames && catalog.categoryNames.length > 0 ? catalog.categoryNames : [catalog.categoryName]).map((catName, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
+                              {catName}
+                            </span>
+                          ))}
+                        </div>
                         <span className="text-sm text-gray-500 capitalize">{catalog.type}</span>
                       </div>
                       <div className="flex gap-2">
@@ -1281,7 +1289,7 @@ const SuperadminDashboard = () => {
                           )}
                           <div>
                             <h3 className="font-bold text-gray-900 text-lg">{catalog.name}</h3>
-                            <p className="text-sm text-gray-600">{catalog.categoryName}</p>
+                            <p className="text-sm text-gray-600">{(catalog.categoryNames || []).join(', ') || catalog.categoryName}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -1607,7 +1615,7 @@ const SuperadminDashboard = () => {
                               )}
                               <div>
                                 <h3 className="font-bold text-gray-900 text-lg">{catalog.name}</h3>
-                                <p className="text-sm text-gray-600">{catalog.categoryName}</p>
+                                <p className="text-sm text-gray-600">{(catalog.categoryNames || []).join(', ') || catalog.categoryName}</p>
                               </div>
                             </div>
                             <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-bold rounded-full">
@@ -1749,37 +1757,80 @@ const SuperadminDashboard = () => {
               </div>
 
               <form onSubmit={handleCatalogSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Catalog Name</label>
-                    <input
-                      type="text"
-                      value={catalogFormData.name}
-                      onChange={(e) => setCatalogFormData({ ...catalogFormData, name: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                    <select
-                      value={catalogFormData.category}
-                      onChange={(e) => {
-                        const selectedCategory = categories.find(cat => cat._id === e.target.value);
-                        setCatalogFormData({ 
-                          ...catalogFormData, 
-                          category: e.target.value,
-                          categoryName: selectedCategory ? selectedCategory.name : ''
-                        });
-                      }}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map(cat => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
-                    </select>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Catalog Name</label>
+                  <input
+                    type="text"
+                    value={catalogFormData.name}
+                    onChange={(e) => setCatalogFormData({ ...catalogFormData, name: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Categories</label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        id="selectAllCategories"
+                        checked={categories.length > 0 && catalogFormData.categories.length === categories.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setCatalogFormData({
+                              ...catalogFormData,
+                              categories: categories.map(cat => cat._id),
+                              categoryNames: categories.map(cat => cat.name)
+                            });
+                          } else {
+                            setCatalogFormData({ ...catalogFormData, categories: [], categoryNames: [] });
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                      />
+                      <label htmlFor="selectAllCategories" className="text-sm font-medium text-gray-700">
+                        Select All Categories ({categories.length})
+                      </label>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto border-2 border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
+                      {categories.length > 0 ? (
+                        categories.map(cat => (
+                          <div key={cat._id} className="flex items-center gap-2 p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors">
+                            <input
+                              type="checkbox"
+                              id={`catalog-category-${cat._id}`}
+                              checked={catalogFormData.categories.includes(cat._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setCatalogFormData({
+                                    ...catalogFormData,
+                                    categories: [...catalogFormData.categories, cat._id],
+                                    categoryNames: [...catalogFormData.categoryNames, cat.name]
+                                  });
+                                } else {
+                                  setCatalogFormData({
+                                    ...catalogFormData,
+                                    categories: catalogFormData.categories.filter(id => id !== cat._id),
+                                    categoryNames: catalogFormData.categoryNames.filter(name => name !== cat.name)
+                                  });
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                            />
+                            <label htmlFor={`catalog-category-${cat._id}`} className="flex-1 text-sm cursor-pointer font-medium text-gray-900">
+                              {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500 p-2">No categories available</p>
+                      )}
+                    </div>
+                    {catalogFormData.categories.length === 0 && (
+                      <p className="text-xs text-red-500">Select at least one category</p>
+                    )}
                   </div>
                 </div>
 

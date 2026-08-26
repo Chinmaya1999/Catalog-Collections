@@ -38,8 +38,14 @@ router.get('/:id', async (req, res) => {
 router.post('/', auth, upload.none(), [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('description').trim().notEmpty().withMessage('Description is required'),
-  body('category').notEmpty().withMessage('Category is required'),
-  body('categoryName').trim().notEmpty().withMessage('Category name is required')
+  body('categories').custom((value) => {
+    try {
+      const arr = JSON.parse(value);
+      return Array.isArray(arr) && arr.length > 0;
+    } catch (e) {
+      return false;
+    }
+  }).withMessage('At least one category is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -50,8 +56,8 @@ router.post('/', auth, upload.none(), [
     const catalogData = {
       name: req.body.name,
       description: req.body.description,
-      category: req.body.category,
-      categoryName: req.body.categoryName,
+      categories: JSON.parse(req.body.categories),
+      categoryNames: req.body.categoryNames ? JSON.parse(req.body.categoryNames) : [],
       driveLink: req.body.driveLink || '',
       pdfFile: req.body.pdfFile || '',
       image: req.body.image,
@@ -93,8 +99,8 @@ router.put('/:id', auth, upload.none(), async (req, res) => {
     const updateData = {
       name: req.body.name || catalog.name,
       description: req.body.description || catalog.description,
-      category: req.body.category || catalog.category,
-      categoryName: req.body.categoryName || catalog.categoryName,
+      categories: req.body.categories ? JSON.parse(req.body.categories) : catalog.categories,
+      categoryNames: req.body.categoryNames ? JSON.parse(req.body.categoryNames) : catalog.categoryNames,
       driveLink: req.body.driveLink !== undefined ? req.body.driveLink : catalog.driveLink,
       pdfFile: req.body.pdfFile !== undefined ? req.body.pdfFile : catalog.pdfFile,
       image: req.body.image || catalog.image,
@@ -112,11 +118,8 @@ router.put('/:id', auth, upload.none(), async (req, res) => {
       }
     };
 
-    const updatedCatalog = await Catalog.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
+    Object.assign(catalog, updateData);
+    const updatedCatalog = await catalog.save();
 
     res.json({
       message: 'Catalog updated successfully',

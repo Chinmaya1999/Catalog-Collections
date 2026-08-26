@@ -449,7 +449,7 @@ const AdminDashboard = () => {
                       
                       <div className="flex items-center justify-between">
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
-                          {catalog.categoryName}
+                          {(catalog.categoryNames && catalog.categoryNames.length > 0 ? catalog.categoryNames : [catalog.categoryName]).filter(Boolean).join(', ')}
                         </span>
                         <span className="text-sm text-gray-500 capitalize">{catalog.type}</span>
                       </div>

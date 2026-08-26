@@ -74,7 +74,10 @@ const Catalog = memo(() => {
   // How many catalogs live in each category, for the filter chips
   const categoryCounts = useMemo(() => {
     return catalogs.reduce((acc, catalog) => {
-      acc[catalog.categoryName] = (acc[catalog.categoryName] || 0) + 1;
+      const names = catalog.categoryNames && catalog.categoryNames.length > 0 ? catalog.categoryNames : [catalog.categoryName];
+      names.forEach((name) => {
+        acc[name] = (acc[name] || 0) + 1;
+      });
       return acc;
     }, {});
   }, [catalogs]);
@@ -86,7 +89,7 @@ const Catalog = memo(() => {
         !searchQuery ||
         catalog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         catalog.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = !selectedCategory || catalog.categoryName === selectedCategory;
+      const matchesCategory = !selectedCategory || (catalog.categoryNames || [catalog.categoryName]).includes(selectedCategory);
       const matchesSaved = !showSavedOnly || savedIds.has(catalog._id);
       return matchesSearch && matchesCategory && matchesSaved;
     });
@@ -447,11 +450,11 @@ const Catalog = memo(() => {
                     <div className="flex-1 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                          {catalog.categoryName && (
-                            <span className="bg-gray-100 text-xs font-semibold text-gray-700 px-2.5 py-1 rounded-full">
-                              {catalog.categoryName}
+                          {(catalog.categoryNames && catalog.categoryNames.length > 0 ? catalog.categoryNames : [catalog.categoryName]).filter(Boolean).map((catName, idx) => (
+                            <span key={idx} className="bg-gray-100 text-xs font-semibold text-gray-700 px-2.5 py-1 rounded-full">
+                              {catName}
                             </span>
-                          )}
+                          ))}
                           <CatalogBadges catalog={catalog} />
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">{catalog.name}</h3>

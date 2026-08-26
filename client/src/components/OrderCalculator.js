@@ -35,7 +35,7 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
 
   const calcFilteredCatalogs = React.useMemo(() => {
     return catalogs.filter((catalog) => {
-      const matchesCategory = !calcCategory || catalog.categoryName === calcCategory;
+      const matchesCategory = !calcCategory || (catalog.categoryNames || [catalog.categoryName]).includes(calcCategory);
       const min = catalog.priceRange?.minPrice || 0;
       const max = catalog.priceRange?.maxPrice || 0;
       const matchesMin = !calcMinPrice || max === 0 || max >= Number(calcMinPrice);
@@ -69,7 +69,9 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
     const lines = [
       'Hi, I would like a quotation for:',
       `Catalog: ${calcSelectedCatalog.name}`,
-      calcSelectedCatalog.categoryName ? `Category: ${calcSelectedCatalog.categoryName}` : null,
+      (calcSelectedCatalog.categoryNames && calcSelectedCatalog.categoryNames.length > 0)
+        ? `Category: ${calcSelectedCatalog.categoryNames.join(', ')}`
+        : (calcSelectedCatalog.categoryName ? `Category: ${calcSelectedCatalog.categoryName}` : null),
       `Quantity: ${calcQuantity}`,
       `Unit price: ${calcCurrency}${calcUnitPrice}`,
       `Subtotal: ${calcCurrency}${calcSubtotal.toFixed(2)}`,

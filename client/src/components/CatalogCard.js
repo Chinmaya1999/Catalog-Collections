@@ -24,11 +24,11 @@ const CatalogCard = ({ catalog, onPreview, isSaved, onToggleSave, variants }) =>
           aria-label={`Preview ${catalog.name}`}
         />
         <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start max-w-[75%]">
-          {catalog.categoryName && (
-            <span className="bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-900 px-2.5 py-1 rounded-full shadow-sm">
-              {catalog.categoryName}
+          {(catalog.categoryNames && catalog.categoryNames.length > 0 ? catalog.categoryNames : [catalog.categoryName]).filter(Boolean).map((catName, idx) => (
+            <span key={idx} className="bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-900 px-2.5 py-1 rounded-full shadow-sm">
+              {catName}
             </span>
-          )}
+          ))}
           <CatalogBadges catalog={catalog} />
         </div>
         {onToggleSave && (

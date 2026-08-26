@@ -107,14 +107,14 @@ const Home = memo(() => {
   };
 
   const categoryCatalogCount = (categoryName) =>
-    catalogs.filter((c) => c.categoryName === categoryName).length;
+    catalogs.filter((c) => (c.categoryNames || [c.categoryName]).includes(categoryName)).length;
 
   const filteredCatalogs = catalogs.filter((catalog) => {
     const matchesSearch =
       !searchTerm ||
       catalog.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       catalog.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || catalog.categoryName === selectedCategory;
+    const matchesCategory = !selectedCategory || (catalog.categoryNames || [catalog.categoryName]).includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
