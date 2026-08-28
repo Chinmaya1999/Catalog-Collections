@@ -75,7 +75,6 @@ const SuperadminDashboard = () => {
   const [showPageEntryMode, setShowPageEntryMode] = useState(false);
 
   // Analysis state
-  const [analysisData, setAnalysisData] = useState(null);
   const [excelFile, setExcelFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [importResults, setImportResults] = useState(null);
@@ -164,13 +163,6 @@ const SuperadminDashboard = () => {
       const categoriesRes = await fetch(API_ENDPOINTS.category);
       const categoriesData = await categoriesRes.json();
       setCategories(categoriesData);
-
-      // Fetch product codes from catalogs
-      const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
-      if (codesRes.ok) {
-        const codesData = await codesRes.json();
-        // Product codes are now available via catalog products
-      }
 
       // Fetch all vendors
       const vendorsRes = await fetch(`${API_ENDPOINTS.vendor}/catalog/all`, {
@@ -499,12 +491,6 @@ const SuperadminDashboard = () => {
       if (response.ok) {
         setShowCatalogModal(false);
         fetchData();
-        // Refresh product codes after catalog creation/update
-        const codesRes = await fetch(`${API_ENDPOINTS.catalog}/product-codes/all`);
-        if (codesRes.ok) {
-          const codesData = await codesRes.json();
-          // Product codes are now available via catalog products
-        }
       }
     } catch (error) {
       console.error('Error saving catalog:', error);
