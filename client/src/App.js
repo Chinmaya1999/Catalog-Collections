@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 // Lazy load components for better performance
 const Home = lazy(() => import('./pages/Home'));
 const Catalog = lazy(() => import('./pages/Catalog'));
+const Products = lazy(() => import('./pages/Products'));
 const Contact = lazy(() => import('./pages/Contact'));
 const About = lazy(() => import('./pages/About'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
@@ -40,6 +41,7 @@ const AppLayout = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/catalog" element={<Catalog />} />
+            <Route path="/products" element={<Products />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
             <Route path="/catalog-request" element={<CatalogRequest />} />

@@ -58,6 +58,7 @@ const Navbar = memo(() => {
   const navItems = [
     { name: 'Home', path: '/' },
     { name: 'Catalog', path: '/catalog' },
+    { name: 'Products', path: '/products' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];

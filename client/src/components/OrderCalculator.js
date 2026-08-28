@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, Percent, Minus, Plus, PackageSearch, Tag, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calculator, Percent, Minus, Plus, PackageSearch, Tag, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import { getPdfUrl, getImageUrl } from '../config/api';
+import PhotoLightbox from './PhotoLightbox';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 // WhatsApp number quotations are sent to (country code + number, no symbols)
 const WHATSAPP_NUMBER = '918296810381';
 
 // Quantity discount tiers
-// 1-4: 0%, 5-9: 2%, 10-19: 5%, 20-39: 7%, 40-59: 10%, 60-99: 15%, 100-149: 20%, 150+: 30%
+// 1-19: 5%, 20-59: 10%, 60-149: 20%, 150+: 30%
 const discountTiers = [
-  { min: 1, max: 4, percent: 0, label: '1-4' },
-  { min: 5, max: 9, percent: 2, label: '5-9' },
-  { min: 10, max: 19, percent: 5, label: '10-19' },
-  { min: 20, max: 39, percent: 7, label: '20-39' },
-  { min: 40, max: 59, percent: 10, label: '40-59' },
-  { min: 60, max: 99, percent: 15, label: '60-99' },
-  { min: 100, max: 149, percent: 20, label: '100-149' },
+  { min: 1, max: 19, percent: 5, label: '1-19' },
+  { min: 20, max: 59, percent: 10, label: '20-59' },
+  { min: 60, max: 149, percent: 20, label: '60-149' },
   { min: 150, max: Infinity, percent: 30, label: '150+' },
 ];
 
@@ -32,6 +34,10 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
   const [calcMaxPrice, setCalcMaxPrice] = useState('');
   const [calcCatalogId, setCalcCatalogId] = useState('');
   const [calcQuantity, setCalcQuantity] = useState(5);
+  const [pdfPageNumber, setPdfPageNumber] = useState(1);
+  const [pdfNumPages, setPdfNumPages] = useState(null);
+  const [pdfDirection, setPdfDirection] = useState(1);
+  const [lightboxProduct, setLightboxProduct] = useState(null);
 
   const calcFilteredCatalogs = React.useMemo(() => {
     return catalogs.filter((catalog) => {
@@ -50,6 +56,12 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
     }
   }, [calcFilteredCatalogs, calcCatalogId]);
 
+  useEffect(() => {
+    setPdfPageNumber(1);
+    setPdfNumPages(null);
+    setLightboxProduct(null);
+  }, [calcCatalogId]);
+
   const calcSelectedCatalog = calcFilteredCatalogs.find((c) => c._id === calcCatalogId) || null;
   const calcUnitPrice = calcSelectedCatalog?.priceRange?.minPrice || 0;
   const calcCurrency = calcSelectedCatalog?.priceRange?.currency || '₹';
@@ -59,8 +71,32 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
   const calcDiscountAmount = calcSubtotal * (calcActiveTier.percent / 100);
   const calcTotal = calcSubtotal - calcDiscountAmount;
 
+  // When a price range is set, narrow the photo preview down to just the
+  // individual products (read from the catalog PDF) priced inside that range.
+  const priceRangeActive = calcMinPrice !== '' || calcMaxPrice !== '';
+  const priceFilteredProducts = React.useMemo(() => {
+    if (!calcSelectedCatalog || !priceRangeActive) return [];
+    const min = calcMinPrice !== '' ? Number(calcMinPrice) : null;
+    const max = calcMaxPrice !== '' ? Number(calcMaxPrice) : null;
+    return (calcSelectedCatalog.products || []).filter((product) => {
+      // Most products don't have their own price set (only the catalog-level
+      // price range does, which is how this catalog qualified in the first
+      // place) — keep those rather than hiding everything. Only exclude a
+      // product that HAS its own price and it falls outside the range.
+      if (!(product.price > 0)) return true;
+      if (min !== null && product.price < min) return false;
+      if (max !== null && product.price > max) return false;
+      return true;
+    });
+  }, [calcSelectedCatalog, calcMinPrice, calcMaxPrice, priceRangeActive]);
+
   const adjustCalcQuantity = (delta) => {
     setCalcQuantity((prev) => Math.max(1, prev + delta));
+  };
+
+  const goToPdfPage = (delta) => {
+    setPdfDirection(delta);
+    setPdfPageNumber((p) => Math.max(1, Math.min(pdfNumPages || 1, p + delta)));
   };
 
   const sendQuotationOnWhatsApp = () => {
@@ -224,46 +260,143 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
           </div>
         </div>
 
-        {/* Live calculation */}
+        {/* Product photos */}
         <div className="bg-brand-light rounded-2xl p-6 flex flex-col justify-center">
           {!calcSelectedCatalog ? (
             <div className="text-center text-gray-400 py-8">
               <Tag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
-              <p className="text-sm">Pick a catalog to see your price breakdown</p>
+              <p className="text-sm">Pick a catalog to see product photos</p>
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-500 line-clamp-1">{calcSelectedCatalog.name}</p>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Unit price</span>
-                <span className="font-semibold text-gray-900">{calcCurrency}{calcUnitPrice}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Quantity</span>
-                <span className="font-semibold text-gray-900">× {calcQuantity}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm pb-3 border-b border-gray-200">
-                <span className="text-gray-500">Subtotal</span>
-                <span className="font-semibold text-gray-900">{calcCurrency}{calcSubtotal.toFixed(2)}</span>
-              </div>
+              {priceRangeActive && calcSelectedCatalog.pdfFile ? (
+                priceFilteredProducts.length > 0 ? (
+                  <div className="w-full">
+                    <Document
+                      key={`price-${calcSelectedCatalog._id}`}
+                      file={getPdfUrl(calcSelectedCatalog.pdfFile)}
+                      loading={<p className="text-sm text-gray-400 py-16 text-center">Loading photos…</p>}
+                      error={<p className="text-sm text-gray-400 py-16 text-center">Couldn't load product photos</p>}
+                    >
+                      <div className="flex flex-wrap justify-center gap-3 max-h-80 overflow-y-auto p-1">
+                        {priceFilteredProducts.map((product) => (
+                          <button
+                            type="button"
+                            key={product.code}
+                            onClick={() => setLightboxProduct(product)}
+                            className="w-24 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm text-left cursor-pointer hover:shadow-md transition-shadow"
+                          >
+                            <div className="bg-gray-50 aspect-[3/4] flex items-center justify-center overflow-hidden">
+                              <Page
+                                pageNumber={product.page}
+                                width={90}
+                                renderAnnotationLayer={false}
+                                renderTextLayer={false}
+                                loading={<div className="w-full h-full animate-pulse bg-gray-100" />}
+                              />
+                            </div>
+                            <div className="p-1.5 text-center">
+                              <p className="text-[10px] font-semibold text-gray-900 line-clamp-1">
+                                {product.name || product.code}
+                              </p>
+                              <p className="text-[10px] font-bold text-brand-dark">
+                                {product.price > 0
+                                  ? `${calcCurrency}${product.price}`
+                                  : calcUnitPrice > 0
+                                  ? `${calcCurrency}${calcUnitPrice}+`
+                                  : 'Price on request'}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </Document>
+                    <p className="text-xs text-gray-400 text-center mt-2">
+                      {priceFilteredProducts.length} product{priceFilteredProducts.length === 1 ? '' : 's'} between{' '}
+                      {calcCurrency}{calcMinPrice || '0'} and {calcMaxPrice ? `${calcCurrency}${calcMaxPrice}` : 'any price'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-400 py-8 text-sm">
+                    No products found in this price range
+                  </div>
+                )
+              ) : calcSelectedCatalog.pdfFile ? (
+                <div className="flex flex-col items-center">
+                  <div
+                    className="relative w-full flex items-center justify-center bg-white rounded-xl border border-gray-200 overflow-hidden"
+                    style={{ minHeight: 320 }}
+                  >
+                    <Document
+                      key={calcSelectedCatalog._id}
+                      file={getPdfUrl(calcSelectedCatalog.pdfFile)}
+                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                      loading={<p className="text-sm text-gray-400 py-16">Loading photos…</p>}
+                      error={<p className="text-sm text-gray-400 py-16">Couldn't load product photos</p>}
+                    >
+                      <AnimatePresence mode="wait" custom={pdfDirection} initial={false}>
+                        <motion.div
+                          key={pdfPageNumber}
+                          custom={pdfDirection}
+                          initial={{ opacity: 0, x: pdfDirection * 24 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -pdfDirection * 24 }}
+                          transition={{ duration: 0.22, ease: 'easeInOut' }}
+                        >
+                          <Page
+                            pageNumber={pdfPageNumber}
+                            width={280}
+                            renderAnnotationLayer={false}
+                            renderTextLayer={false}
+                          />
+                        </motion.div>
+                      </AnimatePresence>
+                    </Document>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">
-                  Discount ({calcActiveTier.percent}% · {calcActiveTier.label} units)
-                </span>
-                <span className="font-semibold text-green-600">
-                  {calcDiscountAmount > 0 ? `- ${calcCurrency}${calcDiscountAmount.toFixed(2)}` : `${calcCurrency}0`}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                <span className="text-base font-bold text-gray-900">You pay</span>
-                <span className="text-2xl font-extrabold text-brand-dark">{calcCurrency}{calcTotal.toFixed(2)}</span>
-              </div>
+                    {pdfNumPages > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => goToPdfPage(-1)}
+                          disabled={pdfPageNumber <= 1}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-white hover:scale-105 disabled:opacity-0 disabled:pointer-events-none transition-all"
+                          aria-label="Previous photo"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => goToPdfPage(1)}
+                          disabled={pdfPageNumber >= pdfNumPages}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-white hover:scale-105 disabled:opacity-0 disabled:pointer-events-none transition-all"
+                          aria-label="Next photo"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {pdfNumPages > 1 && (
+                    <span className="text-xs text-gray-500 font-medium mt-3">
+                      Photo {pdfPageNumber} of {pdfNumPages}
+                    </span>
+                  )}
+                </div>
+              ) : calcSelectedCatalog.image ? (
+                <img
+                  src={getImageUrl(calcSelectedCatalog.image)}
+                  alt={calcSelectedCatalog.name}
+                  className="w-full rounded-xl border border-gray-200 object-cover"
+                  style={{ maxHeight: 320 }}
+                />
+              ) : (
+                <div className="text-center text-gray-400 py-8 text-sm">No product photos available</div>
+              )}
 
               {calcNextTier && (
-                <p className="text-xs text-gray-400 pt-1">
+                <p className="text-xs text-gray-400 pt-1 text-center">
                   Order {calcNextTier.min - calcQuantity} more to unlock {calcNextTier.percent}% off.
                 </p>
               )}
@@ -280,6 +413,23 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
           )}
         </div>
       </div>
+
+      {lightboxProduct && calcSelectedCatalog && (
+        <PhotoLightbox
+          pdfFile={calcSelectedCatalog.pdfFile}
+          pageNumber={lightboxProduct.page}
+          title={lightboxProduct.name || lightboxProduct.code}
+          subtitle={lightboxProduct.code}
+          priceLabel={
+            lightboxProduct.price > 0
+              ? `${calcCurrency}${lightboxProduct.price}`
+              : calcUnitPrice > 0
+              ? `${calcCurrency}${calcUnitPrice}+`
+              : 'Price on request'
+          }
+          onClose={() => setLightboxProduct(null)}
+        />
+      )}
     </div>
   );
 };
