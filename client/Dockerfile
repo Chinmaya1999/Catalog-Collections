@@ -7,8 +7,15 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies. Using `npm install` rather than `npm ci` here:
+# tailwindcss's nested postcss-load-config pulls in yaml@2.x alongside older
+# tooling that needs yaml@1.x, which npm sometimes marks "extraneous" in the
+# lockfile depending on npm version — `npm ci`'s strict lockfile-hash check
+# then fails on some npm builds (observed failing on this base image's
+# bundled npm) even though the tree resolves correctly. `npm install` still
+# uses package-lock.json as its resolution base, it just doesn't hard-fail
+# on that discrepancy.
+RUN npm install
 
 # Copy the rest of the application
 COPY . .
