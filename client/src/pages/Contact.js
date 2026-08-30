@@ -2,6 +2,32 @@ import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle } from 'lucide-react';
 import { API_ENDPOINTS } from '../config/api';
+import SEO from '../components/SEO';
+import { SITE_URL } from '../config/seo';
+
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  name: 'Adihuman',
+  url: SITE_URL,
+  image: `${SITE_URL}/images/logo.png`,
+  email: 'contact@adihuman.com',
+  telephone: '+91-82968-10381',
+  taxID: '29AACCU4243J1Z4',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'Shop No. 8, Shri Balaji, KKR Complex, 1st Floor, Opposite SCT College, Kaggadasapura',
+    addressLocality: 'Bangalore',
+    postalCode: '560075',
+    addressCountry: 'IN',
+  },
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    opens: '11:00',
+    closes: '20:00',
+  },
+};
 
 const Contact = memo(() => {
   const [formData, setFormData] = useState({
@@ -55,6 +81,12 @@ const Contact = memo(() => {
 
   return (
     <div className="min-h-screen bg-brand-light">
+      <SEO
+        title="Contact Us | Adihuman – Corporate Gifting & Custom Merchandise"
+        description="Get in touch with Adihuman for corporate gifting, custom combo sets and bulk branded merchandise orders. Bangalore-based, WhatsApp and email support."
+        path="/contact"
+        structuredData={localBusinessSchema}
+      />
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-brand-yellow to-brand-gold py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

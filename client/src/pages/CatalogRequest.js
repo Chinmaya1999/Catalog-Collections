@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
+import SEO from '../components/SEO';
 
 const CatalogRequest = () => {
   const navigate = useNavigate();
@@ -129,6 +130,11 @@ const CatalogRequest = () => {
 
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
+      <SEO
+        title="Request a Custom Catalog | Adihuman"
+        description="Can't find the right catalog? Request a custom corporate gift catalog from Adihuman and get personalized assistance from our team."
+        path="/catalog-request"
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

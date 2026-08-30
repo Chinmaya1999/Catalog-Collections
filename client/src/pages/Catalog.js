@@ -22,6 +22,7 @@ import FeaturedCatalogsStrip from '../components/FeaturedCatalogsStrip';
 import { CatalogSkeletonCard, CatalogBadges, CatalogPrice } from '../components/catalogDisplay';
 import { useSavedCatalogs } from '../hooks/useSavedCatalogs';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
+import SEO from '../components/SEO';
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -162,6 +163,11 @@ const Catalog = memo(() => {
 
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
+      <SEO
+        title="Product Catalogs | Corporate Gift Combo Sets, Drinkware, Accessories & More – Adihuman"
+        description="Browse Adihuman's full range of corporate gift catalogs — combo sets, drinkware, accessories, stationery, electronics and eco-friendly products. Download catalogs and get instant bulk pricing."
+        path="/catalog"
+      />
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-brand-light to-white">
         {/* Decorative blobs */}

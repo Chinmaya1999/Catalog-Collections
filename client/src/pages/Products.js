@@ -4,6 +4,7 @@ import { Search, X, PackageSearch, Layers, ChevronDown, SlidersHorizontal } from
 import { Document, Page, pdfjs } from 'react-pdf';
 import { API_ENDPOINTS, getPdfUrl } from '../config/api';
 import PhotoLightbox from '../components/PhotoLightbox';
+import SEO from '../components/SEO';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -228,6 +229,11 @@ const Products = () => {
 
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
+      <SEO
+        title="All Products | Corporate Gift Items with Photos & Pricing – Adihuman"
+        description="Explore every product across our corporate gifting catalogs — real photos, names and prices for combo sets, drinkware, accessories, stationery, electronics and eco-friendly gifts."
+        path="/products"
+      />
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-brand-light to-white">
         <div className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 bg-brand-yellow/25 rounded-full blur-3xl" />

@@ -1,10 +1,16 @@
 import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Gift, Users, Target } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const About = memo(() => {
   return (
     <div className="min-h-screen bg-brand-light">
+      <SEO
+        title="About Us | Custom Corporate Gifting Experts – Adihuman"
+        description="Adihuman specializes in personalized corporate gifting — custom T-shirts, hoodies, caps, wallets, employee kits and branded merchandise for businesses across India."
+        path="/about"
+      />
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-brand-yellow to-brand-gold py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
