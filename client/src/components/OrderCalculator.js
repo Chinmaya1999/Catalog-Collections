@@ -416,13 +416,12 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
 
       {lightboxProduct && calcSelectedCatalog && (
         <PhotoLightbox
-          pdfFile={calcSelectedCatalog.pdfFile}
-          pageNumber={lightboxProduct.page}
-          title={lightboxProduct.name || lightboxProduct.code}
-          subtitle={lightboxProduct.code}
-          priceLabel={
-            lightboxProduct.price > 0
-              ? `${calcCurrency}${lightboxProduct.price}`
+          catalog={calcSelectedCatalog}
+          products={priceFilteredProducts}
+          startIndex={Math.max(0, priceFilteredProducts.findIndex((p) => p.code === lightboxProduct.code))}
+          getPriceLabel={(p) =>
+            p.price > 0
+              ? `${calcCurrency}${p.price}`
               : calcUnitPrice > 0
               ? `${calcCurrency}${calcUnitPrice}+`
               : 'Price on request'

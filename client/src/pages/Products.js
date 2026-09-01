@@ -394,11 +394,10 @@ const Products = () => {
 
       {lightbox && (
         <PhotoLightbox
-          pdfFile={lightbox.catalog.pdfFile}
-          pageNumber={lightbox.product.page}
-          title={lightbox.product.name || lightbox.product.code}
-          subtitle={lightbox.product.code}
-          priceLabel={formatPrice(lightbox.product, lightbox.catalog)}
+          catalog={lightbox.catalog}
+          products={lightbox.catalog.products}
+          startIndex={Math.max(0, lightbox.catalog.products.findIndex((p) => p.code === lightbox.product.code))}
+          getPriceLabel={(p) => formatPrice(p, lightbox.catalog)}
           onClose={() => setLightbox(null)}
         />
       )}
