@@ -432,6 +432,22 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
         </p>
       </div>
 
+      {job.failedPages?.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-red-800 mb-2">
+            <AlertTriangle size={16} /> {job.failedPages.length} page{job.failedPages.length === 1 ? '' : 's'} failed to process
+          </p>
+          <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
+            {job.failedPages.slice(0, 10).map((f, i) => (
+              <li key={i}>Page {f.page}: {f.error}</li>
+            ))}
+            {job.failedPages.length > 10 && (
+              <li className="text-red-500">…and {job.failedPages.length - 10} more</li>
+            )}
+          </ul>
+        </div>
+      )}
+
       <div className="flex gap-2">
         {['all', 'pending', 'approved', 'rejected'].map((s) => (
           <button
@@ -496,15 +512,18 @@ const ProductExtractionTab = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const jobsRef = useRef([]);
+  useEffect(() => { jobsRef.current = jobs; }, [jobs]);
+
   useEffect(() => {
     fetchJobs();
-    const hasActive = () => jobs.some(j => j.status === 'uploaded' || j.status === 'processing');
     const interval = setInterval(() => {
-      if (hasActive() || jobs.length === 0) fetchJobs();
-    }, 3000);
+      const hasActive = jobsRef.current.some(j => j.status === 'uploaded' || j.status === 'processing');
+      if (hasActive) fetchJobs();
+    }, 5000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs.length]);
+  }, []);
 
   useEffect(() => {
     if (!reviewJob) return;
@@ -705,7 +724,10 @@ const ProductExtractionTab = () => {
                           {job.status === 'completed' && ` · ${job.productsFound} products · ${job.imagesFound} images`}
                         </p>
                         {job.errorMessage && (
-                          <p className="text-xs text-red-600 mt-1">{job.errorMessage}</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {job.errorMessage}
+                            {job.failedPages?.[0]?.error && ` — ${job.failedPages[0].error}`}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
