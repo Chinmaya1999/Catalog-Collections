@@ -38,6 +38,7 @@ const productSchema = new mongoose.Schema({
   source: {
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExtractionJob' },
     pageNumber: { type: Number },
+    pageCode: { type: String, default: null },
     pageImage: { type: String },
     rawAiJson: { type: mongoose.Schema.Types.Mixed },
     confidence: { type: Number, default: null }

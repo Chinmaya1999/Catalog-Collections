@@ -22,7 +22,7 @@ async function renderPage(pdfPath, pageNumber, outDir) {
   await fs.promises.mkdir(outDir, { recursive: true });
   const prefix = path.join(outDir, `page-${pageNumber}`);
   await run('pdftoppm', [
-    '-png', '-r', '150',
+    '-png', '-r', '300',
     '-f', String(pageNumber), '-l', String(pageNumber),
     '-singlefile', pdfPath, prefix
   ]);

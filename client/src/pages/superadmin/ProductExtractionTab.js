@@ -212,7 +212,7 @@ const ProductCard = ({ product, authHeaders, onUpdated, onRemoved }) => {
             rel="noreferrer"
             className="block text-center text-xs text-blue-600 hover:underline mt-2"
           >
-            View source page {draft.source?.pageNumber}
+            View source page {draft.source?.pageNumber}{draft.source?.pageCode ? ` (${draft.source.pageCode})` : ''}
           </a>
         </div>
 
@@ -615,7 +615,7 @@ const ProductExtractionTab = () => {
             Product Extraction
           </h2>
           <p className="text-gray-600 mt-1">
-            Upload a product catalog PDF. Each page is read by AI to pull out products, SKUs, prices, specs and photos for your review.
+            Upload a product catalog PDF. Each page is scanned with OCR (no paid API) to pull out product photos, SKUs, prices, specs and colours — review and correct anything before approving.
           </p>
         </div>
 

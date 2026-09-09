@@ -6,11 +6,15 @@ const ExtractionJob = require('../../models/ExtractionJob');
 const Product = require('../../models/Product');
 const { renderPage } = require('./render');
 const { extractPageImages } = require('./imageExtract');
-const { structurePage } = require('./aiStructure');
+const { structurePage } = require('./heuristicStructure');
+const { getPageText } = require('./pageText');
+const { POOL_SIZE } = require('./ocr');
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 const JOBS_DIR = path.join(UPLOADS_DIR, 'product-extraction', 'jobs');
-const PAGE_CONCURRENCY = 3;
+// Matches the OCR worker pool size (see ocr.js) - each concurrent page slot needs its own
+// tesseract worker, so this can't exceed POOL_SIZE without pages contending for one.
+const PAGE_CONCURRENCY = POOL_SIZE;
 
 function toPublicPath(absPath) {
   const rel = path.relative(UPLOADS_DIR, absPath).split(path.sep).join('/');
@@ -76,14 +80,15 @@ async function processPage(job, pdfPath, pageNumber) {
 
   const pageImagePath = await renderPage(pdfPath, pageNumber, pagesDir);
   const images = await extractPageImages(pdfPath, pageNumber, imagesDir);
-  const aiResult = await structurePage(pageImagePath);
+  const { pageCode } = await getPageText(pdfPath, pageNumber);
+  const structured = await structurePage(pageImagePath);
 
-  if (!aiResult.isProductPage || !Array.isArray(aiResult.products) || aiResult.products.length === 0) {
+  if (!structured.isProductPage || !Array.isArray(structured.products) || structured.products.length === 0) {
     return { productsCreated: 0, imagesFound: images.length, skipped: true };
   }
 
   let productsCreated = 0;
-  for (const raw of aiResult.products) {
+  for (const raw of structured.products) {
     const variants = Array.isArray(raw.variants) ? raw.variants : [];
     const colors = Array.isArray(raw.colors) ? raw.colors : [];
     const { productImages, variantHeroPaths, colorThumbPaths } = assignImages(images, variants, colors);
@@ -119,6 +124,7 @@ async function processPage(job, pdfPath, pageNumber) {
       source: {
         jobId: job._id,
         pageNumber,
+        pageCode,
         pageImage: toPublicPath(pageImagePath),
         rawAiJson: raw,
         confidence: typeof raw.confidence === 'number' ? raw.confidence : null

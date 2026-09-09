@@ -10,5 +10,8 @@ node_modules/
 # host's bind-mounted uploads volume instead of git.
 server/uploads/product-extraction/
 
+# tesseract.js downloads its language model to cwd on first use
+server/*.traineddata
+
 # OS cruft
 .DS_Store

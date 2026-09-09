@@ -225,21 +225,22 @@ router.delete('/products/:id/images/:imageId', async (req, res) => {
 function flattenProduct(product) {
   const rows = [];
   const variants = product.variants.length > 0 ? product.variants : [{}];
+  const colors = product.colors.map(c => `${c.name || ''}${c.code ? ':' + c.code : ''}`).join('; ');
+  const primaryImage = (product.images.find(i => i.isPrimary) || product.images[0] || {}).path || '';
   variants.forEach(v => {
     rows.push({
-      Name: product.name || '',
-      Brand: product.brand || '',
-      Material: product.material || '',
-      SKU: v.sku || '',
-      Description: v.description || '',
-      Dimensions: v.dimensionsCm || '',
-      WeightKg: v.weightKg ?? '',
-      VolumeLtr: v.volumeLtr ?? '',
-      MRP: v.mrp ?? '',
-      SellingPrice: v.sellingPrice ?? '',
-      Colors: product.colors.map(c => `${c.name || ''}${c.code ? ':' + c.code : ''}`).join('; '),
-      PrimaryImage: (product.images.find(i => i.isPrimary) || product.images[0] || {}).path || '',
-      SourcePage: product.source?.pageNumber ?? ''
+      'Page Code': product.source?.pageCode || '',
+      'Product Name': product.name || '',
+      'Material': product.material || '',
+      'SKU Code': v.sku || '',
+      'Description': v.description || '',
+      'Dimensions (L x H x W, cm)': v.dimensionsCm || '',
+      'Weight (kg)': v.weightKg ?? '',
+      'Volume (ltrs)': v.volumeLtr ?? '',
+      'MRP (INR)': v.mrp ?? '',
+      'Colour Options': colors,
+      'Primary Image': primaryImage,
+      'Source Page #': product.source?.pageNumber ?? ''
     });
   });
   return rows;

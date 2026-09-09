@@ -152,8 +152,6 @@ jobs:
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
               -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-              -e ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-              -e ANTHROPIC_MODEL="claude-sonnet-5" \
               ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
 
             # Start frontend container
@@ -210,8 +208,6 @@ jobs:
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
               -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-              -e ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-              -e ANTHROPIC_MODEL="claude-sonnet-5" \
               ${{ secrets.DOCKER_USERNAME }}/catalog-server:previous 2>/dev/null || \
               sudo docker run -d \
                 --name backend \
@@ -223,10 +219,6 @@ jobs:
                 -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
                 -e GITHUB_CLIENT_ID="${{ secrets.GITHUB_CLIENT_ID }}" \
                 -e GITHUB_CLIENT_SECRET="${{ secrets.GITHUB_CLIENT_SECRET }}" \
-                -e ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-                -e ANTHROPIC_MODEL="claude-sonnet-5" \
-              -e ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-              -e ANTHROPIC_MODEL="claude-sonnet-5" \
                 ${{ secrets.DOCKER_USERNAME }}/catalog-server:latest
 
             sudo docker run -d \
