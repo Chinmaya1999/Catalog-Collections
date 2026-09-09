@@ -1,0 +1,14 @@
+# Secrets - never commit real credentials
+.env
+.env.local
+
+# Dependencies - installed fresh by npm ci / Docker build
+node_modules/
+
+# Product Extraction pipeline artifacts (rendered pages, extracted photos, source PDFs).
+# High-volume and regenerable from the original catalog PDF; persisted via the EC2
+# host's bind-mounted uploads volume instead of git.
+server/uploads/product-extraction/
+
+# OS cruft
+.DS_Store
