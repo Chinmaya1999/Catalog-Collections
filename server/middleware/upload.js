@@ -15,8 +15,9 @@ const filesDir = path.join(uploadsDir, 'files');
 const pdfsDir = path.join(uploadsDir, 'pdfs');
 const excelDir = path.join(uploadsDir, 'excel');
 const analysisDir = path.join(uploadsDir, 'pdfs', 'analysis');
+const productExtractionDir = path.join(uploadsDir, 'product-extraction', 'pdfs');
 
-[categoriesDir, catalogsDir, filesDir, pdfsDir, excelDir, analysisDir].forEach(dir => {
+[categoriesDir, catalogsDir, filesDir, pdfsDir, excelDir, analysisDir, productExtractionDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -36,6 +37,8 @@ const storage = multer.diskStorage({
       uploadPath = categoriesDir;
     } else if (originalUrl.includes('/pdf-analysis')) {
       uploadPath = analysisDir;
+    } else if (originalUrl.includes('/product-extraction')) {
+      uploadPath = productExtractionDir;
     } else if (originalUrl.includes('/catalog/pdf')) {
       uploadPath = pdfsDir;
     } else if (originalUrl.includes('/file')) {

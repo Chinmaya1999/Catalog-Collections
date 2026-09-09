@@ -4,6 +4,9 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
+# poppler-utils provides pdftoppm/pdfimages, used by the product-extraction pipeline
+RUN apk add --no-cache poppler-utils
+
 # Copy package.json and package-lock.json (if exists)
 COPY package*.json ./
 

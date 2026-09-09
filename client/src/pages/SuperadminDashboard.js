@@ -26,7 +26,8 @@ import {
   Tag,
   ArrowRight,
   Gift,
-  Megaphone
+  Megaphone,
+  PackageSearch
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -34,6 +35,7 @@ import StatCard from './superadmin/StatCard';
 import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
 import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 import AnnouncementsTab from './superadmin/AnnouncementsTab';
+import ProductExtractionTab from './superadmin/ProductExtractionTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
@@ -42,6 +44,7 @@ const NAV_ITEMS = [
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
+  { id: 'product-extraction', label: 'Product Extraction', description: 'Extract products, images and prices from a catalog PDF', icon: PackageSearch },
   { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
   { id: 'categories', label: 'Categories', description: 'Manage product categories for catalogs', icon: Tag }
 ];
@@ -1151,6 +1154,9 @@ const SuperadminDashboard = () => {
 
         {/* PDF Analysis Tab */}
         {activeTab === 'pdf-analysis' && <PdfAnalysisTab />}
+
+        {/* Product Extraction Tab */}
+        {activeTab === 'product-extraction' && <ProductExtractionTab />}
 
         {/* Catalog Requests Tab */}
         {activeTab === 'catalog-requests' && <CatalogRequestsTab />}
