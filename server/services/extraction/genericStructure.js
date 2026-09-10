@@ -13,7 +13,33 @@ const sharp = require('sharp');
 // \b boundaries matter here - without them "Rs" matches inside ordinary words like "yea-RS,"
 // (found on a marketing page during testing), and the digit group must start with an actual
 // digit so a run of bare commas can't satisfy it.
-const PRICE_LINE = /(?:₹|\bRs\.?\b|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(\d[\d,]*(?:\.\d{1,2})?)/i;
+const CURRENCY_PRICE = /(?:₹|\bRs\.?\b|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(\d[\d,]*(?:\.\d{1,2})?)/i;
+
+// The ₹ glyph gets misread as something else entirely often enough (seen: "3", "T", "Z", "X")
+// that requiring a recognizable currency marker misses real prices outright. A comma-grouped
+// number (Indian lakh/thousand formatting, e.g. "4,299") is a distinctive enough shape to stand
+// in for a currency symbol on its own - but a bare number like that also shows up in ordinary
+// marketing copy ("15,000 points of sale", "more than 120 countries"). Rather than trying to
+// blocklist every non-price word that can follow a count, this only accepts a bare number when
+// it's essentially the *entire* line by itself - true of how a price is actually laid out on a
+// catalog page (its own line, maybe with a trailing "/-"), never true of a number inside a
+// sentence.
+const BARE_PRICE = /\b(\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?)\b/;
+const BARE_PRICE_LINE_LEFTOVER_MAX = 6;
+
+function matchPrice(blockText) {
+  const currencyMatch = blockText.match(CURRENCY_PRICE);
+  if (currencyMatch) return currencyMatch;
+
+  for (const line of blockText.split('\n')) {
+    const trimmed = line.trim();
+    const bareMatch = trimmed.match(BARE_PRICE);
+    if (!bareMatch) continue;
+    const leftover = trimmed.replace(bareMatch[0], '').trim();
+    if (leftover.length <= BARE_PRICE_LINE_LEFTOVER_MAX) return bareMatch;
+  }
+  return null;
+}
 
 // Lines whose vertical gap from the previous line is within this many line-heights are
 // considered part of the same product's text cluster.
@@ -93,7 +119,7 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
   const blocks = groupLinesIntoBlocks(whole.rows);
 
   const productBlocks = blocks
-    .map(block => ({ block, priceMatch: block.text.match(PRICE_LINE) }))
+    .map(block => ({ block, priceMatch: matchPrice(block.text) }))
     .filter(({ priceMatch }) => priceMatch && parseNumber(priceMatch[1]) !== null);
 
   if (productBlocks.length === 0) {
@@ -119,7 +145,7 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
 
   const products = productBlocks.map(({ block, priceMatch }, i) => {
     const lines = block.text.split('\n').map(l => l.trim()).filter(Boolean);
-    const priceLineIdx = lines.findIndex(l => PRICE_LINE.test(l));
+    const priceLineIdx = lines.findIndex(l => !!matchPrice(l));
     const nameLines = lines.filter((_, idx) => idx !== priceLineIdx);
     const name = nameLines[0] || null;
 
