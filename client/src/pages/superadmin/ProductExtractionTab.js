@@ -497,6 +497,9 @@ const ProductExtractionTab = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [publishingId, setPublishingId] = useState(null);
   const [reviewJob, setReviewJob] = useState(null);
+  const [publishModalJob, setPublishModalJob] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('adminToken');
@@ -596,17 +599,30 @@ const ProductExtractionTab = () => {
     }
   };
 
-  const handlePublish = async (job) => {
-    if (!window.confirm(`Publish all approved products from "${job.originalName}" to the public product page?`)) return;
+  const openPublishModal = async (job) => {
+    setPublishModalJob(job);
+    setSelectedCategoryId('');
+    try {
+      const res = await fetch(API_ENDPOINTS.category);
+      if (res.ok) setCategories(await res.json());
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const confirmPublish = async () => {
+    if (!publishModalJob || !selectedCategoryId) return;
+    const job = publishModalJob;
     setPublishingId(job._id);
     try {
       const res = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${job._id}/publish`, {
         method: 'POST',
-        headers: authHeaders
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: selectedCategoryId })
       });
       const data = await res.json();
       if (res.ok) {
-        setJobs(prev => prev.map(j => j._id === job._id ? { ...j, publishedCount: data.totalPublished } : j));
+        setPublishModalJob(null);
         window.alert(data.message);
       } else {
         window.alert(data.message || 'Failed to publish');
@@ -763,7 +779,7 @@ const ProductExtractionTab = () => {
                           Review
                         </button>
                         <button
-                          onClick={() => handlePublish(job)}
+                          onClick={() => openPublishModal(job)}
                           disabled={publishingId === job._id || job.productsFound === 0}
                           title="Publish approved products from this job to the public product page"
                           className="flex items-center gap-1.5 bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 disabled:opacity-40 transition-all"
@@ -792,6 +808,65 @@ const ProductExtractionTab = () => {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {publishModalJob && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setPublishModalJob(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+            >
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                <Globe size={18} className="text-green-600" /> Publish to Product Page
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Publishing approved products from <span className="font-semibold">{publishModalJob.originalName}</span>. Choose the category they'll appear under on the public site.
+              </p>
+
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => setSelectedCategoryId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none mb-2"
+              >
+                <option value="">Select a category…</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>
+                ))}
+              </select>
+              {categories.length === 0 && (
+                <p className="text-xs text-amber-600 mb-2">No categories found — create one in the Categories tab first.</p>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setPublishModalJob(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmPublish}
+                  disabled={!selectedCategoryId || publishingId === publishModalJob._id}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-40 transition-all"
+                >
+                  {publishingId === publishModalJob._id ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+                  Publish
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

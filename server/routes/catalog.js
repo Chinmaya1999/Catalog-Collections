@@ -180,16 +180,17 @@ router.post('/pdf', auth, upload.single('pdf'), async (req, res) => {
     const actualPageCount = pdfDoc.getPageCount();
     
     console.log(`PDF actual page count: ${actualPageCount}`);
-    
-    // Parse PDF to extract product information with OCR
-    const extractedProducts = await extractProductsWithOCR(pdfPath, actualPageCount);
+
+    // Product auto-extraction used to run here (OCR + text pattern matching) and feed the
+    // page-wise product entry UI. That's now the superadmin Product Extraction tool's job
+    // instead, so a catalog PDF upload just stores the file and reports its page count.
 
     res.json({
       message: 'PDF uploaded successfully',
       pdfPath: `/uploads/pdfs/${req.file.filename}`,
-      extractedProducts: extractedProducts.products,
+      extractedProducts: [],
       totalPages: actualPageCount, // Use the accurate page count from pdf-lib
-      productCodePageMap: extractedProducts.productCodePageMap
+      productCodePageMap: {}
     });
   } catch (error) {
     console.error('Error uploading PDF:', error);

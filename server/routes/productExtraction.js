@@ -6,6 +6,7 @@ const XLSX = require('xlsx');
 
 const ExtractionJob = require('../models/ExtractionJob');
 const Product = require('../models/Product');
+const Category = require('../models/Category');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { enqueueJob, retryFailedPages } = require('../services/extraction/pipeline');
@@ -94,17 +95,27 @@ router.post('/jobs/:id/publish', async (req, res) => {
     const job = await ExtractionJob.findById(req.params.id);
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
+    const { categoryId } = req.body;
+    if (!categoryId) {
+      return res.status(400).json({ message: 'Select a category to publish under' });
+    }
+    const category = await Category.findById(categoryId);
+    if (!category) return res.status(404).json({ message: 'Category not found' });
+
+    // Every approved product from this job is (re-)tagged with the chosen category, not just
+    // the not-yet-published ones, so re-publishing under a different category actually moves
+    // already-published products over rather than leaving their old category in place.
     const result = await Product.updateMany(
-      { 'source.jobId': job._id, status: 'approved', isPublished: false },
-      { $set: { isPublished: true, publishedAt: new Date() } }
+      { 'source.jobId': job._id, status: 'approved' },
+      { $set: { isPublished: true, publishedAt: new Date(), category: category._id, categoryName: category.name } }
     );
 
-    const alreadyPublished = await Product.countDocuments({ 'source.jobId': job._id, isPublished: true });
+    const totalPublished = await Product.countDocuments({ 'source.jobId': job._id, isPublished: true });
 
     res.json({
-      message: `Published ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'}`,
+      message: `Published ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'} under "${category.name}"`,
       newlyPublished: result.modifiedCount,
-      totalPublished: alreadyPublished
+      totalPublished
     });
   } catch (error) {
     console.error('Error publishing job:', error);

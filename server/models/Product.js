@@ -29,6 +29,8 @@ const productSchema = new mongoose.Schema({
   name: { type: String, default: null },
   brand: { type: String, default: null },
   material: { type: String, default: null },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
+  categoryName: { type: String, default: null },
   description: { type: String, default: null },
   badges: { type: [String], default: [] },
   variants: { type: [variantSchema], default: [] },
@@ -67,6 +69,7 @@ productSchema.index({ 'source.jobId': 1 });
 productSchema.index({ 'variants.sku': 1 });
 productSchema.index({ isPublished: 1, createdAt: -1 });
 productSchema.index({ isPublished: 1, priceFrom: 1 });
+productSchema.index({ isPublished: 1, category: 1 });
 
 productSchema.pre('save', function(next) {
   const prices = this.variants

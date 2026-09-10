@@ -22,6 +22,7 @@ router.get('/', async (req, res) => {
       }
     }
     if (req.query.brand) filter.brand = req.query.brand;
+    if (req.query.category) filter.category = req.query.category;
     if (req.query.minPrice || req.query.maxPrice) {
       filter.priceFrom = {};
       if (req.query.minPrice) filter.priceFrom.$gte = Number(req.query.minPrice);
@@ -53,6 +54,11 @@ router.get('/', async (req, res) => {
         { $match: { isPublished: true } },
         {
           $facet: {
+            categories: [
+              { $match: { category: { $ne: null } } },
+              { $group: { _id: { id: '$category', name: '$categoryName' }, count: { $sum: 1 } } },
+              { $sort: { '_id.name': 1 } }
+            ],
             brands: [
               { $match: { brand: { $ne: null } } },
               { $group: { _id: '$brand', count: { $sum: 1 } } },
@@ -73,12 +79,13 @@ router.get('/', async (req, res) => {
       ])
     ]);
 
-    const facetResult = facets[0] || { brands: [], colors: [], priceRange: [] };
+    const facetResult = facets[0] || { categories: [], brands: [], colors: [], priceRange: [] };
 
     res.json({
       products,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       filters: {
+        categories: facetResult.categories.map(c => ({ id: c._id.id, name: c._id.name, count: c.count })),
         brands: facetResult.brands.map(b => ({ name: b._id, count: b.count })),
         colors: facetResult.colors.map(c => ({ name: c._id, count: c.count })),
         priceRange: facetResult.priceRange[0]
@@ -101,7 +108,7 @@ router.get('/:id', async (req, res) => {
     const related = await Product.find({
       isPublished: true,
       _id: { $ne: product._id },
-      $or: [{ brand: product.brand }, { material: product.material }]
+      $or: [{ category: product.category }, { brand: product.brand }, { material: product.material }]
     }).select('-source.rawAiJson -attributes').limit(4);
 
     res.json({ product, related });

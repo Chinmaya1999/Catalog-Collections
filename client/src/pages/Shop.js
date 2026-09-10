@@ -52,13 +52,14 @@ const ProductCard = ({ product }) => {
 const Shop = () => {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
-  const [filterOptions, setFilterOptions] = useState({ brands: [], colors: [], priceRange: { min: 0, max: 0 } });
+  const [filterOptions, setFilterOptions] = useState({ categories: [], brands: [], colors: [], priceRange: { min: 0, max: 0 } });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [brand, setBrand] = useState('');
+  const [category, setCategory] = useState('');
   const [color, setColor] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -70,13 +71,14 @@ const Shop = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, brand, color, minPrice, maxPrice, sort]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, category, brand, color, minPrice, maxPrice, sort]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set('search', debouncedSearch);
+      if (category) params.set('category', category);
       if (brand) params.set('brand', brand);
       if (color) params.set('color', color);
       if (minPrice) params.set('minPrice', minPrice);
@@ -96,12 +98,12 @@ const Shop = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, brand, color, minPrice, maxPrice, sort, page]);
+  }, [debouncedSearch, category, brand, color, minPrice, maxPrice, sort, page]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const activeFilterCount = (brand ? 1 : 0) + (color ? 1 : 0) + (minPrice || maxPrice ? 1 : 0);
-  const clearFilters = () => { setBrand(''); setColor(''); setMinPrice(''); setMaxPrice(''); };
+  const activeFilterCount = (category ? 1 : 0) + (brand ? 1 : 0) + (color ? 1 : 0) + (minPrice || maxPrice ? 1 : 0);
+  const clearFilters = () => { setCategory(''); setBrand(''); setColor(''); setMinPrice(''); setMaxPrice(''); };
 
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
@@ -179,7 +181,14 @@ const Shop = () => {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden mb-6"
             >
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none">
+                    <option value="">All categories</option>
+                    {filterOptions.categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.count})</option>)}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Brand</label>
                   <select value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none">
