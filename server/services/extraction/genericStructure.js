@@ -15,6 +15,14 @@ const sharp = require('sharp');
 // digit so a run of bare commas can't satisfy it.
 const CURRENCY_PRICE = /(?:₹|\bRs\.?\b|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(\d[\d,]*(?:\.\d{1,2})?)/i;
 
+// Wholesale/B2B catalogs (seen in a real VIP Industries corporate catalog) often quote a "Net
+// Rate"/"Base Rate" as "<number>+GST@<pct>%" instead of a currency symbol - e.g. "1440+GST@18%".
+// The "+GST@" suffix is distinctive enough to be safe to match anywhere in a block's text
+// (unlike BARE_PRICE below, it doesn't need the whole-line guard), and unlike CURRENCY_PRICE it
+// doesn't require the number to sit immediately next to a keyword - useful since in a table this
+// value is a whole table cell away from any "Net Rate"/"Base Rate" header.
+const GST_SUFFIXED_PRICE = /(\d[\d,]*(?:\.\d{1,2})?)\s*\+\s*GST\s*@?\s*\d{1,2}\s*%/i;
+
 // The ₹ glyph gets misread as something else entirely often enough (seen: "3", "T", "Z", "X")
 // that requiring a recognizable currency marker misses real prices outright. A comma-grouped
 // number (Indian lakh/thousand formatting, e.g. "4,299") is a distinctive enough shape to stand
@@ -23,11 +31,17 @@ const CURRENCY_PRICE = /(?:₹|\bRs\.?\b|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(
 // blocklist every non-price word that can follow a count, this only accepts a bare number when
 // it's essentially the *entire* line by itself - true of how a price is actually laid out on a
 // catalog page (its own line, maybe with a trailing "/-"), never true of a number inside a
-// sentence.
-const BARE_PRICE = /\b(\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?)\b/;
+// sentence. Comma-grouping is preferred as the more confident shape, but plain digits (e.g. a
+// price written as "10000.00" with no thousands separator, also seen in that VIP catalog) are
+// accepted too, bounded to a plausible price length (4-7 digits) so short numbers like a "360°"
+// spec detail or a "12" month warranty can't be mistaken for one.
+const BARE_PRICE = /\b(\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?|\d{4,7}(?:\.\d{1,2})?)\b/;
 const BARE_PRICE_LINE_LEFTOVER_MAX = 6;
 
 function matchPrice(blockText) {
+  const gstMatch = blockText.match(GST_SUFFIXED_PRICE);
+  if (gstMatch) return gstMatch;
+
   const currencyMatch = blockText.match(CURRENCY_PRICE);
   if (currencyMatch) return currencyMatch;
 
@@ -39,6 +53,46 @@ function matchPrice(blockText) {
     if (leftover.length <= BARE_PRICE_LINE_LEFTOVER_MAX) return bareMatch;
   }
   return null;
+}
+
+// Every bare (non-GST-suffixed) price-shaped number in the text, applying the same
+// almost-whole-line guard as matchPrice's own bare-number tier.
+function extractBarePrices(blockText) {
+  const values = [];
+  for (const rawLine of blockText.split('\n')) {
+    const line = rawLine.trim();
+    const bareMatch = line.match(BARE_PRICE);
+    if (!bareMatch) continue;
+    const leftover = line.replace(bareMatch[0], '').trim();
+    if (leftover.length <= BARE_PRICE_LINE_LEFTOVER_MAX) {
+      const n = parseNumber(bareMatch[1]);
+      if (n !== null) values.push(n);
+    }
+  }
+  return values;
+}
+
+// A block can carry two distinct prices - a catalog MRP and a "Net Rate"/"Base Rate" wholesale
+// price quoted as "<number>+GST@<pct>%" (see GST_SUFFIXED_PRICE). Conflating the two would be a
+// real mistake, not just an inconvenience - publishing the wholesale rate as the customer-facing
+// MRP would show a price far below what it should be. When both are present, the MRP is taken as
+// the larger of the two (true in every real catalog: a marked-up MRP is always >= the wholesale
+// rate it's discounted from), the net rate is kept separately as a selling price, and if only one
+// number is found at all it's used as the MRP with no separate selling price - better to
+// under-populate than to silently mislabel a wholesale rate as the retail price.
+function extractPrices(blockText) {
+  const gstMatch = blockText.match(GST_SUFFIXED_PRICE);
+  const netRate = gstMatch ? parseNumber(gstMatch[1]) : null;
+
+  const currencyMatch = blockText.match(CURRENCY_PRICE);
+  const bareValues = extractBarePrices(gstMatch ? blockText.replace(gstMatch[0], ' ') : blockText);
+
+  let mrp = currencyMatch ? parseNumber(currencyMatch[1]) : null;
+  if (mrp === null && bareValues.length > 0) mrp = Math.max(...bareValues);
+  if (mrp === null) mrp = netRate;
+
+  const sellingPrice = netRate !== null && netRate !== mrp ? netRate : null;
+  return { mrp, sellingPrice };
 }
 
 // Lines whose vertical gap from the previous line is within this many line-heights are
@@ -84,6 +138,54 @@ function parseNumber(raw) {
   const cleaned = (raw || '').replace(/[^\d.]/g, '');
   const n = parseFloat(cleaned);
   return Number.isNaN(n) ? null : n;
+}
+
+// Table header cells/labels that can end up as their own line in a block, or - if OCR keeps a
+// header row intact - as several of these words together on one line (e.g. "Product Name Brand
+// MRP Net Rate"). Never a real product name, so a line made up entirely of these is skipped when
+// picking which line to use as one.
+const HEADER_LABEL_WORDS = new Set([
+  'product', 'name', 'brand', 'mrp', 'net', 'rate', 'base', 'price',
+  'specification', 'specifications', 's.no', 'sno', 'no'
+]);
+
+function isHeaderLabelLine(line) {
+  const tokens = line.toLowerCase().replace(/[:.]/g, '').split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every(t => HEADER_LABEL_WORDS.has(t));
+}
+
+// Strips every price-shaped token out of a line (a GST-suffixed net rate, plus any bare MRP-like
+// number) rather than discarding the whole line - needed when a table row puts the name, brand
+// AND price(s) on one OCR line together, so the name/brand text isn't lost along with the price.
+// Safe for this domain's product names: they only ever carry 2-3 digit numbers (sizes like "55",
+// "360°"), well under BARE_PRICE's 4-digit floor, so a real size never gets stripped out.
+function stripPricesFromLine(line) {
+  return line
+    .replace(new RegExp(GST_SUFFIXED_PRICE.source, 'gi'), ' ')
+    .replace(new RegExp(BARE_PRICE.source, 'g'), ' ')
+    // A table's vertical column rule is sometimes OCR'd as a literal "|" fused onto the
+    // adjacent cell's text (e.g. a name cell reading "MIRO STROLLY 55 360° | VIP") - never
+    // meaningful content, so it's dropped along with the prices.
+    .replace(/\|/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// A small set of brands seen across real catalogs this tool has processed - a bonus signal only.
+// Superadmin can bulk-set/correct the brand for an entire extraction job regardless (Product
+// Extraction tab), so a miss here just leaves it blank rather than wrong.
+const KNOWN_BRANDS = [
+  'American Tourister', 'Samsonite', 'Skybags', 'VIP', 'Aristocrat', 'Safari',
+  'Wildcraft', 'Tommy Hilfiger', 'Delsey', 'High Sierra', 'United Colors of Benetton'
+];
+const KNOWN_BRAND_RE = new RegExp(`\\b(${KNOWN_BRANDS.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i');
+
+function detectBrand(text) {
+  const match = text.match(KNOWN_BRAND_RE);
+  if (!match) return null;
+  // Report back in the canonical casing from KNOWN_BRANDS rather than however the page/OCR
+  // happened to capitalize it.
+  return KNOWN_BRANDS.find(b => b.toLowerCase() === match[1].toLowerCase()) || match[1];
 }
 
 // Greedy nearest-image-per-block assignment using centre-to-centre distance.
@@ -143,11 +245,21 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
   const blockList = productBlocks.map(({ block }) => block);
   const imageAssignments = imageBoxes.length > 0 ? assignImagesToBlocks(blockList, imageBoxes) : null;
 
-  const products = productBlocks.map(({ block, priceMatch }, i) => {
-    const lines = block.text.split('\n').map(l => l.trim()).filter(Boolean);
-    const priceLineIdx = lines.findIndex(l => !!matchPrice(l));
-    const nameLines = lines.filter((_, idx) => idx !== priceLineIdx);
-    const name = nameLines[0] || null;
+  const products = productBlocks.map(({ block }, i) => {
+    const rawLines = block.text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    // Build name candidates by stripping every price-shaped token out of each line rather than
+    // dropping a line whole - a table row can share its line with the price(s) - and drop lines
+    // that are just table-header labels. The richest remaining line is taken as the name: a real
+    // product title tends to be longer than a leftover label or a bare brand/SKU fragment.
+    const nameCandidates = rawLines
+      .map(stripPricesFromLine)
+      .filter(line => line && !isHeaderLabelLine(line));
+    const name = nameCandidates.reduce((best, line) => (
+      !best || line.length > best.length ? line : best
+    ), null);
+
+    const { mrp, sellingPrice } = extractPrices(block.text);
 
     // With no reliable per-image position match, every extracted image on the page is offered
     // to every block found on that page - correct for the common single-product-per-page case,
@@ -158,9 +270,9 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
 
     return {
       name,
-      brand: null,
+      brand: detectBrand(block.text),
       material: null,
-      description: nameLines.join(' ') || null,
+      description: nameCandidates.join(' ') || null,
       badges: [],
       variants: [{
         sku: null,
@@ -168,7 +280,8 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
         dimensionsCm: null,
         weightKg: null,
         volumeLtr: null,
-        mrp: parseNumber(priceMatch[1])
+        mrp,
+        sellingPrice
       }],
       colors: [],
       confidence: 0.35,

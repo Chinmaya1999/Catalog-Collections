@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, PackageSearch, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
-import OrderCalculator from '../components/OrderCalculator';
+import ProductOrderCalculator from '../components/ProductOrderCalculator';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -56,27 +56,6 @@ const Shop = () => {
   const [filterOptions, setFilterOptions] = useState({ categories: [], brands: [], colors: [], priceRange: { min: 0, max: 0 } });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-
-  // For the bulk order calculator, which works off catalog PDFs rather than the
-  // individual shop products fetched below.
-  const [orderCatalogs, setOrderCatalogs] = useState([]);
-  const [orderCategories, setOrderCategories] = useState([]);
-
-  useEffect(() => {
-    const fetchOrderCalculatorData = async () => {
-      try {
-        const [catalogsRes, categoriesRes] = await Promise.all([
-          fetch(API_ENDPOINTS.catalog),
-          fetch(API_ENDPOINTS.category)
-        ]);
-        if (catalogsRes.ok) setOrderCatalogs(await catalogsRes.json());
-        if (categoriesRes.ok) setOrderCategories(await categoriesRes.json());
-      } catch (error) {
-        console.error('Error fetching order calculator data:', error);
-      }
-    };
-    fetchOrderCalculatorData();
-  }, []);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -173,7 +152,7 @@ const Shop = () => {
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.5 }}
         >
-          <OrderCalculator catalogs={orderCatalogs} categories={orderCategories} />
+          <ProductOrderCalculator />
         </motion.div>
       </section>
 

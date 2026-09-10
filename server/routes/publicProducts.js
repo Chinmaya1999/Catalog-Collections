@@ -32,11 +32,14 @@ router.get('/', async (req, res) => {
       filter['colors.name'] = new RegExp(`^${req.query.color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     }
 
+    // _id as a tiebreaker keeps pagination stable across requests - without it, ties on the
+    // primary field (e.g. many products sharing a publishedAt from the same bulk-publish, or
+    // the same name) can make skip/limit return a document on two pages, or skip one entirely.
     const sortOptions = {
-      price_asc: { priceFrom: 1 },
-      price_desc: { priceFrom: -1 },
-      name_asc: { name: 1 },
-      newest: { publishedAt: -1 }
+      price_asc: { priceFrom: 1, _id: 1 },
+      price_desc: { priceFrom: -1, _id: 1 },
+      name_asc: { name: 1, _id: 1 },
+      newest: { publishedAt: -1, _id: 1 }
     };
     const sort = sortOptions[req.query.sort] || sortOptions.newest;
 

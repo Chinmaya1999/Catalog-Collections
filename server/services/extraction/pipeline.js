@@ -129,7 +129,7 @@ async function processPage(job, pdfPath, pageNumber) {
       weightKg: typeof v.weightKg === 'number' ? v.weightKg : null,
       volumeLtr: typeof v.volumeLtr === 'number' ? v.volumeLtr : null,
       mrp: typeof v.mrp === 'number' ? v.mrp : null,
-      sellingPrice: null,
+      sellingPrice: typeof v.sellingPrice === 'number' ? v.sellingPrice : null,
       heroImage: variantHeroPaths[i] || variantHeroPaths[0] || null
     }));
 
