@@ -7,6 +7,7 @@ const Product = require('../../models/Product');
 const { renderPage } = require('./render');
 const { extractPageImages } = require('./imageExtract');
 const { structurePage } = require('./heuristicStructure');
+const { structurePage: structurePageGeneric } = require('./genericStructure');
 const { getPageText } = require('./pageText');
 const { POOL_SIZE } = require('./ocr');
 
@@ -31,6 +32,22 @@ async function mapWithConcurrency(items, limit, worker) {
   }
   const runners = Array.from({ length: Math.min(limit, items.length) }, run);
   await Promise.all(runners);
+}
+
+// The generic (non-AMT-template) pass already picked which images belong to which product by
+// position, so this just builds the product's images[] from that pre-picked subset - no
+// variant/colour-count heuristic needed since a generic product is always a single variant.
+function assignGenericImages(images) {
+  const productImages = (images || []).map(img => ({
+    path: toPublicPath(img.path),
+    width: img.width,
+    height: img.height,
+    isPrimary: false,
+    source: 'embedded'
+  }));
+  if (productImages.length) productImages[0].isPrimary = true;
+  const heroPath = productImages[0] ? productImages[0].path : null;
+  return { productImages, variantHeroPaths: [heroPath], colorThumbPaths: [] };
 }
 
 // Best-effort assignment of extracted page images to variant hero shots / color
@@ -81,7 +98,17 @@ async function processPage(job, pdfPath, pageNumber) {
   const pageImagePath = await renderPage(pdfPath, pageNumber, pagesDir);
   const images = await extractPageImages(pdfPath, pageNumber, imagesDir);
   const { pageCode } = await getPageText(pdfPath, pageNumber);
-  const structured = await structurePage(pageImagePath);
+
+  // Try the tuned AMT-catalog pipeline first; if this page doesn't match that template at all
+  // (a different catalog's layout), fall back to the generic, layout-agnostic pass. The generic
+  // pass is deliberately lower-precision - it isn't calibrated against any specific catalog -
+  // so it's only used when the tuned pass finds nothing, never to override a real match.
+  let structured = await structurePage(pageImagePath);
+  let isGeneric = false;
+  if (!structured.isProductPage) {
+    structured = await structurePageGeneric(pageImagePath, pdfPath, pageNumber, images);
+    isGeneric = true;
+  }
 
   if (!structured.isProductPage || !Array.isArray(structured.products) || structured.products.length === 0) {
     return { productsCreated: 0, imagesFound: images.length, skipped: true };
@@ -91,7 +118,9 @@ async function processPage(job, pdfPath, pageNumber) {
   for (const raw of structured.products) {
     const variants = Array.isArray(raw.variants) ? raw.variants : [];
     const colors = Array.isArray(raw.colors) ? raw.colors : [];
-    const { productImages, variantHeroPaths, colorThumbPaths } = assignImages(images, variants, colors);
+    const { productImages, variantHeroPaths, colorThumbPaths } = isGeneric
+      ? assignGenericImages(raw._images)
+      : assignImages(images, variants, colors);
 
     const variantDocs = variants.map((v, i) => ({
       sku: v.sku ?? null,
