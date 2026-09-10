@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
-import OrderCalculator from '../components/OrderCalculator';
 import CatalogCard from '../components/CatalogCard';
 import FeaturedCatalogsStrip from '../components/FeaturedCatalogsStrip';
 import { CatalogSkeletonCard, CatalogBadges, CatalogPrice } from '../components/catalogDisplay';
@@ -244,18 +243,6 @@ const Catalog = memo(() => {
           </div>
         </section>
       )}
-
-      {/* Bulk Pricing Calculator */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.5 }}
-        >
-          <OrderCalculator catalogs={catalogs} categories={categories} />
-        </motion.div>
-      </section>
 
       {/* Sticky category filter bar */}
       <div className="sticky top-20 z-20 bg-white/90 backdrop-blur-md border-y border-gray-100 shadow-sm">

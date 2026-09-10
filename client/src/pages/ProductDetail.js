@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box } from 'lucide-react';
+import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
+
+// Same WhatsApp number the order calculator sends quotation requests to
+const WHATSAPP_NUMBER = '918296810381';
 
 const formatPrice = (n) => (typeof n === 'number' ? `₹${n.toLocaleString('en-IN')}` : 'Price on request');
 
@@ -84,6 +87,26 @@ const ProductDetail = () => {
     } else {
       navigator.clipboard?.writeText(window.location.href);
     }
+  };
+
+  const requestOnWhatsApp = () => {
+    const lines = [
+      'Hi, I would like to request this product:',
+      `Product: ${product.name || 'Unnamed product'}`,
+      product.brand ? `Brand: ${product.brand}` : null,
+      product.material ? `Material: ${product.material}` : null,
+      variant.sku ? `SKU: ${variant.sku}` : null,
+      variant.description ? `Option: ${variant.description}` : null,
+      variant.dimensionsCm ? `Dimensions: ${variant.dimensionsCm} cm` : null,
+      typeof variant.weightKg === 'number' ? `Weight: ${variant.weightKg} kg` : null,
+      typeof variant.volumeLtr === 'number' ? `Volume: ${variant.volumeLtr} L` : null,
+      product.colors?.length > 0 ? `Colours: ${product.colors.map((c) => c.name).filter(Boolean).join(', ')}` : null,
+      `Price: ${formatPrice(price)}`,
+      `Link: ${window.location.href}`
+    ].filter(Boolean);
+
+    const message = encodeURIComponent(lines.join('\n'));
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -226,9 +249,14 @@ const ProductDetail = () => {
               )}
 
               <div className="flex gap-3">
-                <Link to="/catalog-request" className="btn-primary flex-1 text-center">
+                <button
+                  type="button"
+                  onClick={requestOnWhatsApp}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbb59] text-white font-bold px-4 py-3 rounded-lg transition-colors shadow-sm"
+                >
+                  <MessageCircle className="w-5 h-5" />
                   Request This Product
-                </Link>
+                </button>
                 <button onClick={handleShare} className="border border-gray-300 rounded-lg px-4 py-3 font-semibold text-brand-dark hover:bg-gray-50 transition-colors flex items-center justify-center">
                   <Share2 className="w-5 h-5" />
                 </button>

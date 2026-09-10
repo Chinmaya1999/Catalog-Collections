@@ -123,6 +123,47 @@ router.post('/jobs/:id/publish', async (req, res) => {
   }
 });
 
+// Approves every not-yet-approved product from this job in one shot, so a reviewer doesn't
+// have to click Approve on each product individually.
+router.post('/jobs/:id/approve-all', async (req, res) => {
+  try {
+    const job = await ExtractionJob.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    const result = await Product.updateMany(
+      { 'source.jobId': job._id, status: { $ne: 'approved' } },
+      { $set: { status: 'approved' } }
+    );
+
+    res.json({ message: `Approved ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'}`, approved: result.modifiedCount });
+  } catch (error) {
+    console.error('Error bulk-approving products:', error);
+    res.status(500).json({ message: 'Error approving products' });
+  }
+});
+
+// Sets the same brand on every product extracted from this job, so a reviewer doesn't have to
+// type the brand into each product individually when the whole PDF is a single brand's catalog.
+router.post('/jobs/:id/set-brand', async (req, res) => {
+  try {
+    const job = await ExtractionJob.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    const brand = (req.body.brand || '').trim();
+    if (!brand) return res.status(400).json({ message: 'Brand name is required' });
+
+    const result = await Product.updateMany(
+      { 'source.jobId': job._id },
+      { $set: { brand } }
+    );
+
+    res.json({ message: `Set brand "${brand}" on ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'}`, updated: result.modifiedCount });
+  } catch (error) {
+    console.error('Error bulk-setting brand:', error);
+    res.status(500).json({ message: 'Error setting brand' });
+  }
+});
+
 router.delete('/jobs/:id', async (req, res) => {
   try {
     const job = await ExtractionJob.findById(req.params.id);

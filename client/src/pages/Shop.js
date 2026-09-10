@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, PackageSearch, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
+import OrderCalculator from '../components/OrderCalculator';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -55,6 +56,27 @@ const Shop = () => {
   const [filterOptions, setFilterOptions] = useState({ categories: [], brands: [], colors: [], priceRange: { min: 0, max: 0 } });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+
+  // For the bulk order calculator, which works off catalog PDFs rather than the
+  // individual shop products fetched below.
+  const [orderCatalogs, setOrderCatalogs] = useState([]);
+  const [orderCategories, setOrderCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchOrderCalculatorData = async () => {
+      try {
+        const [catalogsRes, categoriesRes] = await Promise.all([
+          fetch(API_ENDPOINTS.catalog),
+          fetch(API_ENDPOINTS.category)
+        ]);
+        if (catalogsRes.ok) setOrderCatalogs(await catalogsRes.json());
+        if (categoriesRes.ok) setOrderCategories(await categoriesRes.json());
+      } catch (error) {
+        console.error('Error fetching order calculator data:', error);
+      }
+    };
+    fetchOrderCalculatorData();
+  }, []);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -143,19 +165,55 @@ const Shop = () => {
         </div>
       </section>
 
+      {/* Bulk Pricing Calculator */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5 }}
+        >
+          <OrderCalculator catalogs={orderCatalogs} categories={orderCategories} />
+        </motion.div>
+      </section>
+
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Category + price range are the primary way to narrow things down, so they stay
+            visible up front rather than hidden behind a toggle. */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1.5">Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none">
+                <option value="">All categories</option>
+                {filterOptions.categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.count})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Price range {filterOptions.priceRange.max > 0 && `(₹${filterOptions.priceRange.min} – ₹${filterOptions.priceRange.max})`}
+              </label>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
+                <span className="text-gray-400">–</span>
+                <input type="number" min="0" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-              showFilters || activeFilterCount > 0 ? 'bg-brand-yellow border-brand-yellow text-brand-dark' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-yellow'
+              showFilters || brand || color ? 'bg-brand-yellow border-brand-yellow text-brand-dark' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-yellow'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-brand-dark text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>
+            More filters
+            {(brand ? 1 : 0) + (color ? 1 : 0) > 0 && (
+              <span className="bg-brand-dark text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{(brand ? 1 : 0) + (color ? 1 : 0)}</span>
             )}
           </button>
 
@@ -181,14 +239,7 @@ const Shop = () => {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden mb-6"
             >
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none">
-                    <option value="">All categories</option>
-                    {filterOptions.categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.count})</option>)}
-                  </select>
-                </div>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Brand</label>
                   <select value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none">
@@ -202,16 +253,6 @@ const Shop = () => {
                     <option value="">All colours</option>
                     {filterOptions.colors.map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Price range {filterOptions.priceRange.max > 0 && `(₹${filterOptions.priceRange.min} – ₹${filterOptions.priceRange.max})`}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input type="number" min="0" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
-                    <span className="text-gray-400">–</span>
-                    <input type="number" min="0" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
-                  </div>
                 </div>
               </div>
             </motion.div>

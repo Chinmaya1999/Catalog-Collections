@@ -345,6 +345,9 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [exporting, setExporting] = useState('');
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [bulkBrand, setBulkBrand] = useState('');
+  const [settingBrand, setSettingBrand] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -381,6 +384,47 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
       console.error('Export error:', error);
     } finally {
       setExporting('');
+    }
+  };
+
+  const approveAll = async () => {
+    const pendingCount = products.filter(p => p.status !== 'approved').length;
+    if (pendingCount === 0) return;
+    if (!window.confirm(`Approve all ${pendingCount} remaining product${pendingCount === 1 ? '' : 's'} in this job?`)) return;
+    setApprovingAll(true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${job._id}/approve-all`, {
+        method: 'POST',
+        headers: authHeaders
+      });
+      if (res.ok) {
+        setProducts(prev => prev.map(p => ({ ...p, status: 'approved' })));
+      }
+    } catch (error) {
+      console.error('Error bulk-approving products:', error);
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
+  const applyBulkBrand = async () => {
+    const brand = bulkBrand.trim();
+    if (!brand) return;
+    if (!window.confirm(`Set brand "${brand}" on all ${products.length} product${products.length === 1 ? '' : 's'} in this job?`)) return;
+    setSettingBrand(true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${job._id}/set-brand`, {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand })
+      });
+      if (res.ok) {
+        setProducts(prev => prev.map(p => ({ ...p, brand })));
+      }
+    } catch (error) {
+      console.error('Error bulk-setting brand:', error);
+    } finally {
+      setSettingBrand(false);
     }
   };
 
@@ -433,6 +477,30 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
         </p>
       </div>
 
+      {products.length > 0 && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Set brand for every product in this PDF
+            </label>
+            <input
+              value={bulkBrand}
+              onChange={(e) => setBulkBrand(e.target.value)}
+              placeholder="e.g. American Tourister"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={applyBulkBrand}
+            disabled={!bulkBrand.trim() || settingBrand}
+            className="flex items-center gap-1.5 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900 disabled:opacity-40 transition-all"
+          >
+            {settingBrand ? <Loader2 size={14} className="animate-spin" /> : null}
+            Apply to all {products.length} product{products.length === 1 ? '' : 's'}
+          </button>
+        </div>
+      )}
+
       {job.failedPages?.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-red-800 mb-2">
@@ -449,18 +517,30 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
         </div>
       )}
 
-      <div className="flex gap-2">
-        {['all', 'pending', 'approved', 'rejected'].map((s) => (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {['all', 'pending', 'approved', 'rejected'].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-full text-sm font-semibold capitalize transition-all ${
+                statusFilter === s ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        {products.some(p => p.status !== 'approved') && (
           <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold capitalize transition-all ${
-              statusFilter === s ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            onClick={approveAll}
+            disabled={approvingAll}
+            className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-all"
           >
-            {s}
+            {approvingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            Approve All
           </button>
-        ))}
+        )}
       </div>
 
       {loading ? (
