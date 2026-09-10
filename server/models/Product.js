@@ -48,6 +48,11 @@ const productSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+  isPublished: { type: Boolean, default: false },
+  publishedAt: { type: Date, default: null },
+  // Denormalized from variants[].sellingPrice||mrp so the public catalog can filter/sort by
+  // price without an aggregation pipeline over the variants subarray.
+  priceFrom: { type: Number, default: null },
   possibleDuplicateOf: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
@@ -60,8 +65,14 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ status: 1 });
 productSchema.index({ 'source.jobId': 1 });
 productSchema.index({ 'variants.sku': 1 });
+productSchema.index({ isPublished: 1, createdAt: -1 });
+productSchema.index({ isPublished: 1, priceFrom: 1 });
 
 productSchema.pre('save', function(next) {
+  const prices = this.variants
+    .map(v => (typeof v.sellingPrice === 'number' ? v.sellingPrice : v.mrp))
+    .filter(p => typeof p === 'number');
+  this.priceFrom = prices.length ? Math.min(...prices) : null;
   this.updatedAt = Date.now();
   next();
 });

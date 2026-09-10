@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   Image as ImageIcon,
   Plus,
-  Copy
+  Copy,
+  Globe
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
 
@@ -494,6 +495,7 @@ const ProductExtractionTab = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [publishingId, setPublishingId] = useState(null);
   const [reviewJob, setReviewJob] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -591,6 +593,28 @@ const ProductExtractionTab = () => {
       console.error('Error deleting job:', error);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handlePublish = async (job) => {
+    if (!window.confirm(`Publish all approved products from "${job.originalName}" to the public product page?`)) return;
+    setPublishingId(job._id);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${job._id}/publish`, {
+        method: 'POST',
+        headers: authHeaders
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setJobs(prev => prev.map(j => j._id === job._id ? { ...j, publishedCount: data.totalPublished } : j));
+        window.alert(data.message);
+      } else {
+        window.alert(data.message || 'Failed to publish');
+      }
+    } catch (error) {
+      console.error('Error publishing job:', error);
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -737,6 +761,15 @@ const ProductExtractionTab = () => {
                           className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-yellow-200 disabled:opacity-40 transition-all"
                         >
                           Review
+                        </button>
+                        <button
+                          onClick={() => handlePublish(job)}
+                          disabled={publishingId === job._id || job.productsFound === 0}
+                          title="Publish approved products from this job to the public product page"
+                          className="flex items-center gap-1.5 bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 disabled:opacity-40 transition-all"
+                        >
+                          {publishingId === job._id ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
+                          Publish
                         </button>
                         <button
                           onClick={() => handleDelete(job._id)}

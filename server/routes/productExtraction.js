@@ -86,6 +86,32 @@ router.post('/jobs/:id/retry', async (req, res) => {
   }
 });
 
+// Publishes every approved product from this job to the public product page. Only approved
+// products go live - pending/rejected ones are left alone so a partially-reviewed job can still
+// be published for what's ready so far.
+router.post('/jobs/:id/publish', async (req, res) => {
+  try {
+    const job = await ExtractionJob.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    const result = await Product.updateMany(
+      { 'source.jobId': job._id, status: 'approved', isPublished: false },
+      { $set: { isPublished: true, publishedAt: new Date() } }
+    );
+
+    const alreadyPublished = await Product.countDocuments({ 'source.jobId': job._id, isPublished: true });
+
+    res.json({
+      message: `Published ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'}`,
+      newlyPublished: result.modifiedCount,
+      totalPublished: alreadyPublished
+    });
+  } catch (error) {
+    console.error('Error publishing job:', error);
+    res.status(500).json({ message: 'Error publishing job' });
+  }
+});
+
 router.delete('/jobs/:id', async (req, res) => {
   try {
     const job = await ExtractionJob.findById(req.params.id);
@@ -167,13 +193,27 @@ router.post('/products/:id/reject', async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { status: 'rejected' },
+      { status: 'rejected', isPublished: false },
       { new: true }
     );
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: 'Error rejecting product' });
+  }
+});
+
+router.post('/products/:id/unpublish', async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { isPublished: false },
+      { new: true }
+    );
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: 'Error unpublishing product' });
   }
 });
 
