@@ -104,7 +104,7 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
 
     const lines = [
       'Hi, I would like a quotation for:',
-      `Catalog: ${calcSelectedCatalog.name}`,
+      `Brand: ${calcSelectedCatalog.name}`,
       (calcSelectedCatalog.categoryNames && calcSelectedCatalog.categoryNames.length > 0)
         ? `Category: ${calcSelectedCatalog.categoryNames.join(', ')}`
         : (calcSelectedCatalog.categoryName ? `Category: ${calcSelectedCatalog.categoryName}` : null),
@@ -132,7 +132,7 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
                 What do you want to order?
               </h2>
               <p className="text-brand-dark/80 text-sm mt-0.5">
-                Filter by category and price, pick a catalog, choose your quantity — we'll work out your bulk discount instantly.
+                Filter by category and price, pick a brand, choose your quantity — we'll work out your bulk discount instantly.
               </p>
             </div>
           </div>
@@ -183,15 +183,15 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
             </div>
           </div>
 
-          {/* Catalog selection */}
+          {/* Brand selection (backed by catalogs - each catalog is one brand's PDF) */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Select a catalog ({calcFilteredCatalogs.length} match{calcFilteredCatalogs.length === 1 ? '' : 'es'})
+              Select Brand ({calcFilteredCatalogs.length} match{calcFilteredCatalogs.length === 1 ? '' : 'es'})
             </label>
             {calcFilteredCatalogs.length === 0 ? (
               <div className="flex items-center gap-2 text-gray-400 text-sm bg-gray-50 rounded-xl px-4 py-3 border border-dashed border-gray-200">
                 <PackageSearch className="w-4 h-4 shrink-0" />
-                No catalogs match these filters
+                No brands match these filters
               </div>
             ) : (
               <select
@@ -199,7 +199,7 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
                 onChange={(e) => setCalcCatalogId(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm"
               >
-                <option value="">Choose a catalog...</option>
+                <option value="">Choose a brand...</option>
                 {calcFilteredCatalogs.map((catalog) => (
                   <option key={catalog._id} value={catalog._id}>
                     {catalog.name}
@@ -265,7 +265,7 @@ const OrderCalculator = ({ catalogs = [], categories = [], compact = false }) =>
           {!calcSelectedCatalog ? (
             <div className="text-center text-gray-400 py-8">
               <Tag className="w-8 h-8 mx-auto mb-3 text-gray-300" />
-              <p className="text-sm">Pick a catalog to see product photos</p>
+              <p className="text-sm">Pick a brand to see product photos</p>
             </div>
           ) : (
             <div className="space-y-3">
