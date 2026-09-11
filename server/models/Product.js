@@ -29,8 +29,13 @@ const productSchema = new mongoose.Schema({
   name: { type: String, default: null },
   brand: { type: String, default: null },
   material: { type: String, default: null },
+  // Legacy single-category fields, kept in sync with categories[0]/categoryNames[0] so
+  // older code paths (facets, related-products lookup) that still read a single category
+  // keep working.
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
   categoryName: { type: String, default: null },
+  categories: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }], default: [] },
+  categoryNames: { type: [String], default: [] },
   description: { type: String, default: null },
   badges: { type: [String], default: [] },
   variants: { type: [variantSchema], default: [] },
@@ -70,6 +75,7 @@ productSchema.index({ 'variants.sku': 1 });
 productSchema.index({ isPublished: 1, createdAt: -1 });
 productSchema.index({ isPublished: 1, priceFrom: 1 });
 productSchema.index({ isPublished: 1, category: 1 });
+productSchema.index({ isPublished: 1, categories: 1 });
 
 productSchema.pre('save', function(next) {
   const prices = this.variants

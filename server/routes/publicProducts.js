@@ -22,7 +22,12 @@ router.get('/', async (req, res) => {
       }
     }
     if (req.query.brand) filter.brand = req.query.brand;
-    if (req.query.category) filter.category = req.query.category;
+    // Match either the legacy singular field (older published products) or the new
+    // multi-category array, so a product tagged under several categories shows up when
+    // browsing any one of them.
+    if (req.query.category) {
+      filter.$and = [{ $or: [{ category: req.query.category }, { categories: req.query.category }] }];
+    }
     if (req.query.minPrice || req.query.maxPrice) {
       filter.priceFrom = {};
       if (req.query.minPrice) filter.priceFrom.$gte = Number(req.query.minPrice);
@@ -55,11 +60,25 @@ router.get('/', async (req, res) => {
       Product.countDocuments(filter),
       Product.aggregate([
         { $match: { isPublished: true } },
+        // Normalize into a single categoryPairs array so products still on the legacy
+        // singular field (published before multi-category support) are counted the same
+        // way as products with a `categories` array.
+        {
+          $addFields: {
+            categoryPairs: {
+              $cond: [
+                { $gt: [{ $size: { $ifNull: ['$categories', []] } }, 0] },
+                { $zip: { inputs: [{ $ifNull: ['$categories', []] }, { $ifNull: ['$categoryNames', []] }] } },
+                { $cond: [{ $ne: ['$category', null] }, [['$category', '$categoryName']], []] }
+              ]
+            }
+          }
+        },
         {
           $facet: {
             categories: [
-              { $match: { category: { $ne: null } } },
-              { $group: { _id: { id: '$category', name: '$categoryName' }, count: { $sum: 1 } } },
+              { $unwind: '$categoryPairs' },
+              { $group: { _id: { id: { $arrayElemAt: ['$categoryPairs', 0] }, name: { $arrayElemAt: ['$categoryPairs', 1] } }, count: { $sum: 1 } } },
               { $sort: { '_id.name': 1 } }
             ],
             brands: [
@@ -108,10 +127,18 @@ router.get('/:id', async (req, res) => {
       .select('-source.rawAiJson -attributes');
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
+    const productCategoryIds = product.categories && product.categories.length > 0
+      ? product.categories
+      : [product.category].filter(Boolean);
     const related = await Product.find({
       isPublished: true,
       _id: { $ne: product._id },
-      $or: [{ category: product.category }, { brand: product.brand }, { material: product.material }]
+      $or: [
+        { category: { $in: productCategoryIds } },
+        { categories: { $in: productCategoryIds } },
+        { brand: product.brand },
+        { material: product.material }
+      ]
     }).select('-source.rawAiJson -attributes').limit(4);
 
     res.json({ product, related });

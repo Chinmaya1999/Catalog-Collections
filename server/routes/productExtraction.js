@@ -95,25 +95,46 @@ router.post('/jobs/:id/publish', async (req, res) => {
     const job = await ExtractionJob.findById(req.params.id);
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
-    const { categoryId } = req.body;
-    if (!categoryId) {
-      return res.status(400).json({ message: 'Select a category to publish under' });
+    // Accept either the new multi-select `categoryIds` array or the legacy single `categoryId`
+    // so older API callers keep working.
+    const categoryIds = Array.isArray(req.body.categoryIds)
+      ? req.body.categoryIds.filter(Boolean)
+      : (req.body.categoryId ? [req.body.categoryId] : []);
+    if (categoryIds.length === 0) {
+      return res.status(400).json({ message: 'Select at least one category to publish under' });
     }
-    const category = await Category.findById(categoryId);
-    if (!category) return res.status(404).json({ message: 'Category not found' });
+    const categoryDocs = await Category.find({ _id: { $in: categoryIds } });
+    if (categoryDocs.length === 0) return res.status(404).json({ message: 'Category not found' });
+    // Preserve the order the admin picked them in, dropping any id that didn't resolve.
+    const orderedCategories = categoryIds
+      .map(id => categoryDocs.find(c => c._id.toString() === id.toString()))
+      .filter(Boolean);
+    const categoryNamesList = orderedCategories.map(c => c.name);
+    const categoryLabel = categoryNamesList.join(', ');
 
-    // Every approved product from this job is (re-)tagged with the chosen category, not just
-    // the not-yet-published ones, so re-publishing under a different category actually moves
-    // already-published products over rather than leaving their old category in place.
+    // Every approved product from this job is (re-)tagged with the chosen categories, not just
+    // the not-yet-published ones, so re-publishing under different categories actually moves
+    // already-published products over rather than leaving their old categories in place.
+    // The legacy `category`/`categoryName` fields are kept as the first selected category so
+    // existing single-category filters, facets, and related-product lookups keep working.
     const result = await Product.updateMany(
       { 'source.jobId': job._id, status: 'approved' },
-      { $set: { isPublished: true, publishedAt: new Date(), category: category._id, categoryName: category.name } }
+      {
+        $set: {
+          isPublished: true,
+          publishedAt: new Date(),
+          categories: orderedCategories.map(c => c._id),
+          categoryNames: categoryNamesList,
+          category: orderedCategories[0]._id,
+          categoryName: orderedCategories[0].name
+        }
+      }
     );
 
     const totalPublished = await Product.countDocuments({ 'source.jobId': job._id, isPublished: true });
 
     res.json({
-      message: `Published ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'} under "${category.name}"`,
+      message: `Published ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'} under "${categoryLabel}"`,
       newlyPublished: result.modifiedCount,
       totalPublished
     });

@@ -579,7 +579,7 @@ const ProductExtractionTab = () => {
   const [reviewJob, setReviewJob] = useState(null);
   const [publishModalJob, setPublishModalJob] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
   const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('adminToken');
@@ -681,7 +681,7 @@ const ProductExtractionTab = () => {
 
   const openPublishModal = async (job) => {
     setPublishModalJob(job);
-    setSelectedCategoryId('');
+    setSelectedCategoryIds([]);
     try {
       const res = await fetch(API_ENDPOINTS.category);
       if (res.ok) setCategories(await res.json());
@@ -690,15 +690,19 @@ const ProductExtractionTab = () => {
     }
   };
 
+  const toggleCategory = (id) => {
+    setSelectedCategoryIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
+
   const confirmPublish = async () => {
-    if (!publishModalJob || !selectedCategoryId) return;
+    if (!publishModalJob || selectedCategoryIds.length === 0) return;
     const job = publishModalJob;
     setPublishingId(job._id);
     try {
       const res = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${job._id}/publish`, {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId: selectedCategoryId })
+        body: JSON.stringify({ categoryIds: selectedCategoryIds })
       });
       const data = await res.json();
       if (res.ok) {
@@ -909,21 +913,45 @@ const ProductExtractionTab = () => {
                 <Globe size={18} className="text-green-600" /> Publish to Product Page
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Publishing approved products from <span className="font-semibold">{publishModalJob.originalName}</span>. Choose the category they'll appear under on the public site.
+                Publishing approved products from <span className="font-semibold">{publishModalJob.originalName}</span>. Choose the categories they'll appear under on the public site — pick more than one to list them under all of it.
               </p>
 
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-              <select
-                value={selectedCategoryId}
-                onChange={(e) => setSelectedCategoryId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none mb-2"
-              >
-                <option value="">Select a category…</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>
-                ))}
-              </select>
-              {categories.length === 0 && (
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Categories</label>
+              {categories.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="publishSelectAllCategories"
+                      checked={categories.length > 0 && selectedCategoryIds.length === categories.length}
+                      onChange={(e) => setSelectedCategoryIds(e.target.checked ? categories.map(c => c._id) : [])}
+                      className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                    />
+                    <label htmlFor="publishSelectAllCategories" className="text-xs font-medium text-gray-700">
+                      Select All ({categories.length})
+                    </label>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-1 bg-gray-50 mb-2">
+                    {categories.map((c) => (
+                      <div key={c._id} className="flex items-center gap-2 p-1.5 bg-white rounded-lg hover:bg-gray-100 transition-colors">
+                        <input
+                          type="checkbox"
+                          id={`publish-category-${c._id}`}
+                          checked={selectedCategoryIds.includes(c._id)}
+                          onChange={() => toggleCategory(c._id)}
+                          className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                        />
+                        <label htmlFor={`publish-category-${c._id}`} className="flex-1 text-sm cursor-pointer text-gray-900">
+                          {c.icon ? `${c.icon} ` : ''}{c.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedCategoryIds.length === 0 && (
+                    <p className="text-xs text-red-500 mb-2">Select at least one category</p>
+                  )}
+                </>
+              ) : (
                 <p className="text-xs text-amber-600 mb-2">No categories found — create one in the Categories tab first.</p>
               )}
 
@@ -936,7 +964,7 @@ const ProductExtractionTab = () => {
                 </button>
                 <button
                   onClick={confirmPublish}
-                  disabled={!selectedCategoryId || publishingId === publishModalJob._id}
+                  disabled={selectedCategoryIds.length === 0 || publishingId === publishModalJob._id}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-40 transition-all"
                 >
                   {publishingId === publishModalJob._id ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
