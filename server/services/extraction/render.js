@@ -1,10 +1,10 @@
-const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { niceSpawn } = require('./procSpawn');
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args);
+    const proc = niceSpawn(cmd, args);
     let stderr = '';
     proc.stderr.on('data', (d) => { stderr += d.toString(); });
     proc.on('error', (err) => {

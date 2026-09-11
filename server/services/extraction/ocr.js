@@ -7,7 +7,12 @@ const sharp = require('sharp');
 // overlapped in time, since the underlying worker only really processes one job at a time; a
 // pool gives true parallelism without that hazard, and multiple regions *within* one page are
 // still read sequentially by heuristicStructure.js regardless.
-const POOL_SIZE = 2;
+// Kept at 1 (serial page processing) rather than 2+: each OCR worker and its accompanying
+// pdftoppm/pdfimages/pdftohtml child processes are genuine CPU-bound work, and running two
+// pages' worth of that at once on a small server was enough to starve the same Node process's
+// event loop of CPU and make the public site hang mid-upload. Raise this only on a box with
+// CPU headroom to spare.
+const POOL_SIZE = 1;
 let poolPromise = null;
 
 function initPool() {

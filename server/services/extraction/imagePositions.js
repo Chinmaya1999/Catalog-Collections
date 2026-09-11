@@ -1,8 +1,8 @@
-const { spawn } = require('child_process');
+const { niceSpawn } = require('./procSpawn');
 
 function runCapture(cmd, args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args);
+    const proc = niceSpawn(cmd, args);
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', (d) => { stdout += d.toString(); });

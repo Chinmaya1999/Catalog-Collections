@@ -1,7 +1,7 @@
-const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { niceSpawn } = require('./procSpawn');
 
 // Minimum dimension (px) for an extracted image to be treated as a candidate product
 // photo rather than a decorative icon/badge graphic.
@@ -9,7 +9,7 @@ const MIN_PHOTO_DIMENSION = 120;
 
 function runCapture(cmd, args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args);
+    const proc = niceSpawn(cmd, args);
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', (d) => { stdout += d.toString(); });
