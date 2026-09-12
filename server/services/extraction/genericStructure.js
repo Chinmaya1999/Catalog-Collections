@@ -13,7 +13,12 @@ const sharp = require('sharp');
 // \b boundaries matter here - without them "Rs" matches inside ordinary words like "yea-RS,"
 // (found on a marketing page during testing), and the digit group must start with an actual
 // digit so a run of bare commas can't satisfy it.
-const CURRENCY_PRICE = /(?:₹|\bRs\.?\b|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(\d[\d,]*(?:\.\d{1,2})?)/i;
+// The boundary on "Rs" sits right after the letters (\bRs\b), not after the optional trailing
+// period (the old \bRs\.?\b) - a period is a non-word character, so when it's followed by
+// another non-word character (almost always: "Rs. 1599", "Rs. " before a space) there is no
+// word/non-word transition there for \b to match, and the whole alternative silently failed to
+// match a hugely common real-world price format.
+const CURRENCY_PRICE = /(?:₹|\bRs\b\.?|\bINR\b|\bMRP\b|\bPrice\b)\s*[:\-]?\s*(\d[\d,]*(?:\.\d{1,2})?)/i;
 
 // Wholesale/B2B catalogs (seen in a real VIP Industries corporate catalog) often quote a "Net
 // Rate"/"Base Rate" as "<number>+GST@<pct>%" instead of a currency symbol - e.g. "1440+GST@18%".
@@ -154,6 +159,25 @@ function isHeaderLabelLine(line) {
   return tokens.length > 0 && tokens.every(t => HEADER_LABEL_WORDS.has(t));
 }
 
+// A single-product spec sheet (seen in a real Adidas catalog: one product per page, a fixed
+// "Article No. / MRP / Color / Material / HSN Code / GST / Sizes available" block down the side)
+// lists these as their own "Label: value" or "Label. value" lines - often longer than the actual
+// product title, which would otherwise win the "richest remaining line" name heuristic below
+// (e.g. picking "Sizes available : S, M, L, XL, XXL & 3XL" as the product name). None of these
+// labels are a product name under any real catalog convention, so lines starting with one are
+// dropped from the name candidates regardless of length.
+const FIELD_LABEL_PREFIXES = [
+  'article no', 'article', 'sku', 'color', 'colour', 'material', 'sizes available', 'sizes',
+  'size', 'hsn code', 'hsn', 'gst', 'weight', 'dimensions', 'capacity', 'warranty'
+];
+const FIELD_LABEL_LINE = new RegExp(
+  `^(?:${FIELD_LABEL_PREFIXES.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\.?\\s*[:\\-]`,
+  'i'
+);
+function isFieldLabelLine(line) {
+  return FIELD_LABEL_LINE.test(line.trim());
+}
+
 // Strips every price-shaped token out of a line (a GST-suffixed net rate, plus any bare MRP-like
 // number) rather than discarding the whole line - needed when a table row puts the name, brand
 // AND price(s) on one OCR line together, so the name/brand text isn't lost along with the price.
@@ -257,7 +281,7 @@ async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages
     // product title tends to be longer than a leftover label or a bare brand/SKU fragment.
     const nameCandidates = rawLines
       .map(stripPricesFromLine)
-      .filter(line => line && !isHeaderLabelLine(line));
+      .filter(line => line && !isHeaderLabelLine(line) && !isFieldLabelLine(line));
     const name = nameCandidates.reduce((best, line) => (
       !best || line.length > best.length ? line : best
     ), null);
