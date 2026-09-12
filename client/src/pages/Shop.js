@@ -5,6 +5,7 @@ import { Search, X, PackageSearch, SlidersHorizontal, ChevronLeft, ChevronRight 
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
 import ProductOrderCalculator from '../components/ProductOrderCalculator';
+import PriceNoticeBanner from '../components/PriceNoticeBanner';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -143,6 +144,11 @@ const Shop = () => {
           </div>
         </div>
       </section>
+
+      {/* Price notice */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <PriceNoticeBanner />
+      </div>
 
       {/* Bulk Pricing Calculator */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

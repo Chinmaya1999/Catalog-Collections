@@ -22,6 +22,7 @@ import { CatalogSkeletonCard, CatalogBadges, CatalogPrice } from '../components/
 import { useSavedCatalogs } from '../hooks/useSavedCatalogs';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
+import PriceNoticeBanner from '../components/PriceNoticeBanner';
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -234,6 +235,11 @@ const Catalog = memo(() => {
           </motion.div>
         </div>
       </section>
+
+      {/* Price notice */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <PriceNoticeBanner />
+      </div>
 
       {/* Featured Catalogs strip */}
       {catalogs.some((c) => c.featured) && (
