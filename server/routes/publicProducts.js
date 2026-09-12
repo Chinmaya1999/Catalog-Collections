@@ -12,6 +12,19 @@ const PAGE_SIZE_MAX = 60;
 
 router.get('/', async (req, res) => {
   try {
+    // Lookup by explicit id list (used by the Shop page's wishlist) bypasses every other
+    // filter/pagination concern - the caller already knows exactly which products it wants.
+    if (req.query.ids) {
+      const ids = req.query.ids.split(',').map((id) => id.trim()).filter(Boolean);
+      const products = await Product.find({ _id: { $in: ids }, isPublished: true })
+        .select('-source.rawAiJson -attributes');
+      return res.json({
+        products,
+        pagination: { page: 1, limit: products.length, total: products.length, totalPages: 1 },
+        filters: { categories: [], brands: [], colors: [], priceRange: { min: 0, max: 0 } }
+      });
+    }
+
     const filter = { isPublished: true };
 
     if (req.query.search) {
