@@ -217,7 +217,10 @@ function assignImagesToBlocks(blocks, imageBoxes) {
 
 async function structurePage(pageImagePath, pdfPath, pageNumber, extractedImages) {
   const meta = await sharp(pageImagePath).metadata();
-  const whole = await ocrRegion(pageImagePath, { left: 0, top: 0, width: 1, height: 1 }, 11);
+  // The whole page at native (300 DPI) resolution is the single heaviest OCR call in the
+  // pipeline; downscaling it is safe here because this pass only hunts for large display text
+  // (prices, headlines), not small print, and matchPrice's regexes tolerate the odd misread digit.
+  const whole = await ocrRegion(pageImagePath, { left: 0, top: 0, width: 1, height: 1 }, 11, 1600);
   const blocks = groupLinesIntoBlocks(whole.rows);
 
   const productBlocks = blocks

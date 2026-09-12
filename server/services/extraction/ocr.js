@@ -80,22 +80,43 @@ function parseTsv(tsv) {
 // small pill-shaped badge, a dense grid table, isolated labels floating next to photos) and no
 // single mode reads all of them reliably. Callers pick the mode that suits what they're cropping
 // (see heuristicStructure.js).
-async function ocrRegion(pageImagePath, region, psm) {
+//
+// `maxWidth` downscales the crop before OCR if it's wider than that - only worth passing for a
+// big crop (e.g. genericStructure.js's whole-page scan) where the text being hunted for is large
+// display type (prices, headlines): Tesseract's recognition time scales with pixel count, and
+// that text stays readable well below the page's native 300 DPI render.
+async function ocrRegion(pageImagePath, region, psm, maxWidth) {
   const meta = await sharp(pageImagePath).metadata();
   const left = Math.round(meta.width * region.left);
   const top = Math.round(meta.height * region.top);
   const width = Math.min(Math.round(meta.width * region.width), meta.width - left);
   const height = Math.min(Math.round(meta.height * region.height), meta.height - top);
 
-  const cropBuffer = await sharp(pageImagePath)
-    .extract({ left, top, width, height })
-    .toBuffer();
+  let cropPipeline = sharp(pageImagePath).extract({ left, top, width, height });
+  let coordScale = 1;
+  if (maxWidth && width > maxWidth) {
+    coordScale = width / maxWidth;
+    cropPipeline = cropPipeline.resize({ width: maxWidth });
+  }
+  const cropBuffer = await cropPipeline.toBuffer();
 
   const slot = await acquireWorker();
   try {
     if (psm) await slot.worker.setParameters({ tessedit_pageseg_mode: String(psm) });
     const { data } = await slot.worker.recognize(cropBuffer, {}, { text: true, tsv: true });
-    const words = parseTsv(data.tsv);
+    let words = parseTsv(data.tsv);
+    // Scale word boxes back up to the un-resized crop's pixel space so callers (e.g.
+    // genericStructure.js matching text blocks against image positions) never need to know
+    // OCR ran on a downscaled copy - coordinates stay consistent regardless of maxWidth.
+    if (coordScale !== 1) {
+      words = words.map(w => ({
+        ...w,
+        x: Math.round(w.x * coordScale),
+        y: Math.round(w.y * coordScale),
+        width: Math.round(w.width * coordScale),
+        height: Math.round(w.height * coordScale)
+      }));
+    }
 
     const rowMap = new Map();
     for (const w of words) {

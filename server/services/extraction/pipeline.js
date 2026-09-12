@@ -91,7 +91,19 @@ async function findDuplicate(skus) {
   return existing ? existing._id : null;
 }
 
-async function processPage(job, pdfPath, pageNumber) {
+// After this many consecutive pages fail to match the tuned AMT template, stop trying it for
+// the rest of the job - a vendor's catalog uses one layout throughout, so once a job has shown
+// it isn't that template, every further attempt is 4 guaranteed-wasted OCR calls (title x2,
+// colours, table) on top of the generic pass that runs anyway. Kept small enough that a catalog
+// which opens with a couple of cover/divider pages before its real product-grid pages still
+// gets a fair shot at matching.
+const HEURISTIC_PROBE_PAGES = 3;
+
+function createTemplateProbeState() {
+  return { probesRemaining: HEURISTIC_PROBE_PAGES, confirmedMatch: false, skipHeuristic: false };
+}
+
+async function processPage(job, pdfPath, pageNumber, templateState) {
   const pagesDir = path.join(JOBS_DIR, String(job._id), 'pages');
   const imagesDir = path.join(JOBS_DIR, String(job._id), 'images', String(pageNumber));
 
@@ -103,11 +115,21 @@ async function processPage(job, pdfPath, pageNumber) {
   // (a different catalog's layout), fall back to the generic, layout-agnostic pass. The generic
   // pass is deliberately lower-precision - it isn't calibrated against any specific catalog -
   // so it's only used when the tuned pass finds nothing, never to override a real match.
-  let structured = await structurePage(pageImagePath);
+  const tryHeuristic = !templateState || !templateState.skipHeuristic;
+  let structured = tryHeuristic ? await structurePage(pageImagePath) : { isProductPage: false, products: [] };
   let isGeneric = false;
   if (!structured.isProductPage) {
     structured = await structurePageGeneric(pageImagePath, pdfPath, pageNumber, images);
     isGeneric = true;
+  }
+
+  if (templateState && tryHeuristic) {
+    if (!isGeneric) {
+      templateState.confirmedMatch = true;
+    } else if (!templateState.confirmedMatch) {
+      templateState.probesRemaining -= 1;
+      if (templateState.probesRemaining <= 0) templateState.skipHeuristic = true;
+    }
   }
 
   if (!structured.isProductPage || !Array.isArray(structured.products) || structured.products.length === 0) {
@@ -206,10 +228,11 @@ async function runJob(jobId) {
   await job.save();
 
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const templateState = createTemplateProbeState();
 
   await mapWithConcurrency(pageNumbers, PAGE_CONCURRENCY, async (pageNumber) => {
     try {
-      const result = await processPage(job, absolutePdfPath, pageNumber);
+      const result = await processPage(job, absolutePdfPath, pageNumber, templateState);
       await ExtractionJob.findByIdAndUpdate(job._id, {
         $inc: {
           processedPages: 1,
@@ -273,9 +296,11 @@ async function retryFailedPages(jobId) {
   job.status = 'processing';
   await job.save();
 
+  const templateState = createTemplateProbeState();
+
   await mapWithConcurrency(pagesToRetry, PAGE_CONCURRENCY, async (pageNumber) => {
     try {
-      const result = await processPage(job, absolutePdfPath, pageNumber);
+      const result = await processPage(job, absolutePdfPath, pageNumber, templateState);
       await ExtractionJob.findByIdAndUpdate(job._id, {
         $inc: {
           productsFound: result.productsCreated,
