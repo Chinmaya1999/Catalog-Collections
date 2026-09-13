@@ -26,8 +26,7 @@ import {
   Tag,
   ArrowRight,
   Gift,
-  Megaphone,
-  PackageSearch
+  Megaphone
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -35,7 +34,6 @@ import StatCard from './superadmin/StatCard';
 import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
 import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 import AnnouncementsTab from './superadmin/AnnouncementsTab';
-import ProductExtractionTab from './superadmin/ProductExtractionTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
@@ -43,8 +41,8 @@ const NAV_ITEMS = [
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
+  { id: 'catalog-pdfs', label: 'View All PDFs', description: 'View every uploaded catalog PDF', icon: FileText },
   { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
-  { id: 'product-extraction', label: 'Product Extraction', description: 'Extract products, images and prices from a catalog PDF', icon: PackageSearch },
   { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
   { id: 'categories', label: 'Categories', description: 'Manage product categories for catalogs', icon: Tag }
 ];
@@ -952,6 +950,14 @@ const SuperadminDashboard = () => {
     }
   };
 
+  const handleViewCatalogPdf = (catalog) => {
+    const pdfUrl = catalog.pdfFile ? getPdfUrl(catalog.pdfFile) : catalog.driveLink;
+    if (!pdfUrl) return;
+    setCurrentPDF(pdfUrl);
+    setCurrentProductPage(1);
+    setShowPDFViewer(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1155,8 +1161,41 @@ const SuperadminDashboard = () => {
         {/* PDF Analysis Tab */}
         {activeTab === 'pdf-analysis' && <PdfAnalysisTab />}
 
-        {/* Product Extraction Tab */}
-        {activeTab === 'product-extraction' && <ProductExtractionTab />}
+        {/* Catalog PDFs Tab */}
+        {activeTab === 'catalog-pdfs' && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                <h2 className="text-2xl font-bold text-gray-900">Catalog PDFs</h2>
+                <p className="text-gray-600 mt-1">View every catalog PDF uploaded through catalog management.</p>
+              </div>
+              {catalogs.filter(catalog => catalog.pdfFile || catalog.driveLink).length === 0 ? (
+                <div className="p-12 text-center text-gray-500">No catalog PDFs uploaded yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 p-6">
+                  {catalogs.filter(catalog => catalog.pdfFile || catalog.driveLink).map(catalog => (
+                    <div key={catalog._id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                      <div className="h-40 bg-gray-100">
+                        {catalog.image ? (
+                          <img src={getImageUrl(catalog.image)} alt={catalog.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full flex items-center justify-center"><FileText className="w-12 h-12 text-gray-400" /></div>
+                        )}
+                      </div>
+                      <div className="p-5">
+                        <h3 className="font-bold text-lg text-gray-900 truncate">{catalog.name}</h3>
+                        <p className="mt-1 text-sm text-gray-500">{catalog.pdfFile ? 'Uploaded PDF' : 'Google Drive PDF'}</p>
+                        <button onClick={() => handleViewCatalogPdf(catalog)} className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-4 py-3 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 transition-all">
+                          <FileText className="w-4 h-4" /> View PDF
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Catalog Requests Tab */}
         {activeTab === 'catalog-requests' && <CatalogRequestsTab />}

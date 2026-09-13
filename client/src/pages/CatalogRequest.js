@@ -8,8 +8,7 @@ import SEO from '../components/SEO';
 const CatalogRequest = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    catalogCode: '',
-    catalogNumber: '',
+    name: '',
     phoneNumber: '',
     message: ''
   });
@@ -20,18 +19,18 @@ const CatalogRequest = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.catalogCode.trim()) {
-      newErrors.catalogCode = 'Catalog code is required';
-    }
-    
-    if (!formData.catalogNumber.trim()) {
-      newErrors.catalogNumber = 'Catalog number is required';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
     }
     
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
     } else if (!/^[0-9]{10,15}$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = 'Phone number must be 10-15 digits';
+    }
+
+    if (!formData.message.trim()) {
+      newErrors.message = 'Please tell us what you need';
     }
 
     if (formData.message.length > 1000) {
@@ -80,8 +79,7 @@ const CatalogRequest = () => {
       if (response.ok) {
         setSubmitSuccess(true);
         setFormData({
-          catalogCode: '',
-          catalogNumber: '',
+          name: '',
           phoneNumber: '',
           message: ''
         });
@@ -154,50 +152,29 @@ const CatalogRequest = () => {
             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-8 py-6">
               <h1 className="text-3xl font-bold text-gray-900">Catalog Request</h1>
               <p className="text-gray-800 mt-2">
-                Submit your catalog code and details to get personalized assistance
+                Tell us what you need and our team will help you create it
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              {/* Catalog Code */}
+              {/* Name */}
               <div>
-                <label htmlFor="catalogCode" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Catalog Code *
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Your Name *
                 </label>
                 <input
                   type="text"
-                  id="catalogCode"
-                  name="catalogCode"
-                  value={formData.catalogCode}
+                  id="name"
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
                   className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.catalogCode ? 'border-red-500' : 'border-gray-300'
+                    errors.name ? 'border-red-500' : 'border-gray-300'
                   } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all`}
-                  placeholder="Enter your catalog code"
+                  placeholder="Enter your name"
                 />
-                {errors.catalogCode && (
-                  <p className="text-red-500 text-sm mt-1">{errors.catalogCode}</p>
-                )}
-              </div>
-
-              {/* Catalog Number */}
-              <div>
-                <label htmlFor="catalogNumber" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Catalog Number *
-                </label>
-                <input
-                  type="text"
-                  id="catalogNumber"
-                  name="catalogNumber"
-                  value={formData.catalogNumber}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.catalogNumber ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all`}
-                  placeholder="Enter your catalog number"
-                />
-                {errors.catalogNumber && (
-                  <p className="text-red-500 text-sm mt-1">{errors.catalogNumber}</p>
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
                 )}
               </div>
 
@@ -228,7 +205,7 @@ const CatalogRequest = () => {
               {/* Custom Message */}
               <div>
                 <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Message <span className="text-gray-400 font-normal">(optional)</span>
+                  What do you need? *
                 </label>
                 <textarea
                   id="message"
@@ -240,7 +217,7 @@ const CatalogRequest = () => {
                   className={`w-full px-4 py-3 rounded-lg border ${
                     errors.message ? 'border-red-500' : 'border-gray-300'
                   } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all resize-none`}
-                  placeholder="Add any specific details, quantities, or questions you'd like us to know..."
+                  placeholder="Tell us the products, quantity, event date, budget, or customization you need..."
                 />
                 <div className="flex items-center justify-between mt-1">
                   {errors.message ? (
@@ -277,10 +254,10 @@ const CatalogRequest = () => {
           <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
             <h3 className="font-semibold text-gray-900 mb-2">How it works</h3>
             <ol className="list-decimal list-inside space-y-2 text-gray-600 text-sm">
-              <li>Enter your catalog code and number from our catalog</li>
-              <li>Provide your phone number for contact</li>
-              <li>Submit the request and our team will reach out to you</li>
-              <li>Get personalized assistance with your catalog selection</li>
+              <li>Tell us your name and phone number</li>
+              <li>Describe the products or customization you need</li>
+              <li>Submit the request and our team will contact you</li>
+              <li>Get personalized help with your bulk order</li>
             </ol>
           </div>
         </motion.div>

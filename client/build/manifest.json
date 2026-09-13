@@ -1,0 +1,15 @@
+{
+  "short_name": "Adihuman",
+  "name": "Adihuman | Corporate Gifting & Custom Merchandise",
+  "icons": [
+    {
+      "src": "images/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FFD700",
+  "background_color": "#ffffff"
+}

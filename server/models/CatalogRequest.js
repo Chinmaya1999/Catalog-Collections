@@ -1,12 +1,7 @@
 const mongoose = require('mongoose');
 
 const catalogRequestSchema = new mongoose.Schema({
-  catalogCode: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  catalogNumber: {
+  name: {
     type: String,
     required: true,
     trim: true
@@ -18,7 +13,7 @@ const catalogRequestSchema = new mongoose.Schema({
   },
   message: {
     type: String,
-    default: '',
+    required: true,
     trim: true,
     maxlength: 1000
   },

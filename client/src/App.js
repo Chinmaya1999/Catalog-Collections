@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import FestiveOfferPopup from './components/FestiveOfferPopup';
@@ -7,7 +7,6 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy load components for better performance
 const Home = lazy(() => import('./pages/Home'));
-const Catalog = lazy(() => import('./pages/Catalog'));
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Contact = lazy(() => import('./pages/Contact'));
@@ -41,7 +40,7 @@ const AppLayout = () => {
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/catalog" element={<Navigate to="/" replace />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/:id" element={<ProductDetail />} />
             <Route path="/contact" element={<Contact />} />

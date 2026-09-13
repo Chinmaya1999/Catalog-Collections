@@ -50,8 +50,7 @@ const CatalogRequestsTab = () => {
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(r =>
-        r.catalogCode?.toLowerCase().includes(q) ||
-        r.catalogNumber?.toLowerCase().includes(q) ||
+        r.name?.toLowerCase().includes(q) ||
         r.phoneNumber?.toLowerCase().includes(q) ||
         r.message?.toLowerCase().includes(q)
       );
@@ -107,7 +106,7 @@ const CatalogRequestsTab = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search code, number, or phone…"
+              placeholder="Search name, phone, or request…"
               className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
             />
           </div>
@@ -127,8 +126,7 @@ const CatalogRequestsTab = () => {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Catalog Code</th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Catalog Number</th>
+                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Name</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Phone</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Status</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Customer Message</th>
@@ -140,8 +138,7 @@ const CatalogRequestsTab = () => {
               <tbody className="divide-y divide-gray-100 bg-white">
                 {filteredRequests.map((request) => (
                   <tr key={request._id} className={request.isDeleted ? 'bg-red-50/40' : 'hover:bg-gray-50'}>
-                    <td className="px-6 py-4 font-semibold text-gray-900 whitespace-nowrap">{request.catalogCode}</td>
-                    <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{request.catalogNumber}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900 whitespace-nowrap">{request.name || '—'}</td>
                     <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
                       <a href={`tel:${request.phoneNumber}`} className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
                         <Phone size={14} />

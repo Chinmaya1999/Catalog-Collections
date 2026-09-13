@@ -47,21 +47,9 @@ const Footer = memo(() => {
             <h3 className="font-semibold text-lg mb-4 text-brand-yellow">Quick Links</h3>
             <ul className="space-y-2">
               <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link></li>
-              <li><Link to="/catalog" className="text-gray-400 hover:text-white transition-colors">Catalog</Link></li>
               <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">About Us</Link></li>
               <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
               <li><Link to="/admin/login" className="text-gray-400 hover:text-brand-yellow transition-colors font-semibold">Admin Login</Link></li>
-            </ul>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4 text-brand-yellow">Categories</h3>
-            <ul className="space-y-2">
-              <li><Link to="/catalog?featured=true" className="text-gray-400 hover:text-white transition-colors">Combo Sets</Link></li>
-              <li><Link to="/catalog?ecoFriendly=true" className="text-gray-400 hover:text-white transition-colors">Eco-Friendly</Link></li>
-              <li><Link to="/category/keychains" className="text-gray-400 hover:text-white transition-colors">Keychains</Link></li>
-              <li><Link to="/category/cardholders" className="text-gray-400 hover:text-white transition-colors">Cardholders</Link></li>
             </ul>
           </div>
 

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /superadmin/
+
+Sitemap: https://catalog.adihuman.com/sitemap.xml

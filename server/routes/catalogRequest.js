@@ -14,11 +14,10 @@ const superadminOnly = (req, res, next) => {
 
 // Create new catalog request (public)
 router.post('/', [
-  body('catalogCode').trim().notEmpty().withMessage('Catalog code is required'),
-  body('catalogNumber').trim().notEmpty().withMessage('Catalog number is required'),
+  body('name').trim().notEmpty().withMessage('Name is required'),
   body('phoneNumber').trim().notEmpty().withMessage('Phone number is required')
     .matches(/^[0-9]{10,15}$/).withMessage('Phone number must be 10-15 digits'),
-  body('message').optional({ checkFalsy: true }).trim()
+  body('message').trim().notEmpty().withMessage('Please describe what you need')
     .isLength({ max: 1000 }).withMessage('Message must be under 1000 characters')
 ], async (req, res) => {
   try {
@@ -28,10 +27,9 @@ router.post('/', [
     }
 
     const catalogRequestData = {
-      catalogCode: req.body.catalogCode,
-      catalogNumber: req.body.catalogNumber,
+      name: req.body.name,
       phoneNumber: req.body.phoneNumber,
-      message: req.body.message || '',
+      message: req.body.message,
       status: 'pending'
     };
 

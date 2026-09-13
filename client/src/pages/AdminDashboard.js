@@ -700,7 +700,7 @@ const AdminDashboard = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
                             <h4 className="text-xl font-bold text-gray-900">
-                              {request.catalogCode}
+                              {request.name || 'Catalog request'}
                             </h4>
                             <span className={`px-3 py-1 text-sm font-bold rounded-full ${
                               request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -715,7 +715,7 @@ const AdminDashboard = () => {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Package className="w-5 h-5 text-blue-600" />
-                              <span className="font-medium">Catalog #: {request.catalogNumber}</span>
+                              <span className="font-medium">Customer request</span>
                             </div>
                             <div className="flex items-center gap-2 text-gray-700">
                               <Phone className="w-5 h-5 text-green-600" />
@@ -737,8 +737,7 @@ const AdminDashboard = () => {
                             </div>
                           )}
 
-                          {/* Find Vendor Button */}
-                          <div className="mb-4">
+                          {request.catalogNumber && <div className="mb-4">
                             <button
                               onClick={() => handleRequestVendorSearch(request.catalogNumber, request._id)}
                               disabled={requestVendorSearch.searching && requestVendorSearch.expandedRequestId === request._id}
@@ -747,7 +746,7 @@ const AdminDashboard = () => {
                               <Search className="w-4 h-4" />
                               {requestVendorSearch.searching && requestVendorSearch.expandedRequestId === request._id ? 'Finding Vendor...' : 'Find Vendor'}
                             </button>
-                          </div>
+                          </div>}
 
                           {/* Vendor Search Results */}
                           {requestVendorSearch.expandedRequestId === request._id && (
