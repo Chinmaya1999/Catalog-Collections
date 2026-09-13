@@ -229,7 +229,32 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-const EDITABLE_FIELDS = ['name', 'brand', 'material', 'description', 'badges', 'variants', 'colors', 'images'];
+router.post('/products', async (req, res) => {
+  try {
+    const product = new Product({
+      name: req.body.name || '',
+      brand: req.body.brand || null,
+      material: req.body.material || null,
+      description: req.body.description || null,
+      categoryName: req.body.categoryName || null,
+      categoryNames: req.body.categoryName ? [req.body.categoryName] : [],
+      badges: Array.isArray(req.body.badges) ? req.body.badges : [],
+      variants: req.body.price === '' || req.body.price === undefined
+        ? []
+        : [{ sellingPrice: Number(req.body.price) }],
+      status: req.body.status || 'pending',
+      isPublished: Boolean(req.body.isPublished),
+      images: []
+    });
+    await product.save();
+    res.status(201).json(product);
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Error creating product: ' + error.message });
+  }
+});
+
+const EDITABLE_FIELDS = ['name', 'brand', 'material', 'description', 'badges', 'variants', 'colors', 'images', 'categoryName', 'categoryNames', 'isPublished', 'status'];
 
 router.put('/products/:id', async (req, res) => {
   try {
@@ -245,6 +270,28 @@ router.put('/products/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating product:', error);
     res.status(500).json({ message: 'Error updating product: ' + error.message });
+  }
+});
+
+router.post('/products/:id/images', upload.array('images', 12), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No images uploaded' });
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const hasPrimary = product.images.some(image => image.isPrimary);
+    req.files.forEach((file, index) => {
+      product.images.push({
+        path: `/uploads/product-extraction/pdfs/${file.filename}`,
+        isPrimary: !hasPrimary && index === 0,
+        source: 'embedded'
+      });
+    });
+    await product.save();
+    res.json(product);
+  } catch (error) {
+    console.error('Error uploading product image:', error);
+    res.status(500).json({ message: 'Error uploading product image' });
   }
 });
 

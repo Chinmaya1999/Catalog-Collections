@@ -141,40 +141,40 @@ const CorporateLanding = () => {
 
   return (
   <div className="overflow-hidden bg-white text-[#171717]">
-    <section className="relative bg-[#171717] text-white">
-      <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:48px_48px]" />
-      <div className="absolute -right-24 top-10 h-80 w-80 rounded-full bg-brand-gold/20 blur-3xl" />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-14 sm:px-6 lg:grid-cols-12 lg:px-8 lg:pb-24 lg:pt-24">
+    <section className="relative border-b border-black/10 bg-white">
+      <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(0,0,0,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.035)_1px,transparent_1px)] [background-size:52px_52px]" />
+      <div className="absolute -right-24 top-10 h-80 w-80 rounded-full bg-brand-yellow/20 blur-3xl" />
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-12 lg:px-8 lg:pb-24 lg:pt-20">
         <motion.div {...motionProps} className="lg:col-span-6">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-yellow">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-gold">
             <Sparkles className="h-4 w-4" />
             Corporate gifting, made personal
           </div>
-          <h1 className="max-w-3xl text-5xl font-display font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-3xl text-5xl font-display font-bold leading-[0.98] tracking-tight text-[#171717] sm:text-6xl lg:text-7xl">
             Put your brand in <span className="text-brand-yellow">everyday moments.</span>
           </h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-white/70 sm:text-xl">
+          <p className="mt-7 max-w-xl text-lg leading-8 text-gray-600 sm:text-xl">
             Custom T-shirts, premium gift sets, home accessories, electronics, bottles, mugs and more, made for your people and packed for your brand.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link to="/catalog-request" className="btn-primary inline-flex items-center justify-center gap-2">
               Build your gift order <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/25 px-6 py-3 font-semibold text-white transition hover:border-brand-yellow hover:text-brand-yellow">
+            <Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-lg border border-black/20 px-6 py-3 font-semibold text-[#171717] transition hover:border-brand-gold hover:text-brand-gold">
               Explore products <ArrowUpRight className="h-5 w-5" />
             </Link>
           </div>
-          <div className="mt-12 grid max-w-xl grid-cols-3 gap-5 border-t border-white/15 pt-6">
-            <div><p className="text-2xl font-bold text-brand-yellow">1000+</p><p className="mt-1 text-xs uppercase tracking-wider text-white/50">Businesses served</p></div>
-            <div><p className="text-2xl font-bold text-brand-yellow">1,000+</p><p className="mt-1 text-xs uppercase tracking-wider text-white/50">Ideas to customize</p></div>
-            <div><p className="text-2xl font-bold text-brand-yellow">Bulk</p><p className="mt-1 text-xs uppercase tracking-wider text-white/50">Order friendly</p></div>
+          <div className="mt-12 grid max-w-xl grid-cols-3 gap-5 border-t border-black/10 pt-6">
+            <div><p className="text-2xl font-bold text-brand-gold">1000+</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Businesses served</p></div>
+            <div><p className="text-2xl font-bold text-brand-gold">1,000+</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Ways to customize</p></div>
+            <div><p className="text-2xl font-bold text-brand-gold">Bulk</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Order friendly</p></div>
           </div>
         </motion.div>
 
         <motion.div {...motionProps} transition={{ duration: 0.65, delay: 0.12 }} className="relative lg:col-span-6 lg:pl-8">
-          <div className="relative grid aspect-[0.9] grid-cols-2 gap-2 overflow-hidden rounded-[2rem] bg-[#292929] p-2 shadow-2xl shadow-black/30">
+          <div className="relative grid aspect-[0.9] grid-cols-2 gap-3 overflow-hidden rounded-[2rem] border border-black/10 bg-[#f3f3f3] p-3 shadow-2xl shadow-black/10">
             {heroProducts.slice(0, 4).map((product) => (
-              <Link to="/shop" aria-label={`Shop ${product.name}`} key={product.name} className="group relative min-h-0 overflow-hidden rounded-2xl bg-[#292929]">
+              <Link to="/shop" aria-label={`Shop ${product.name}`} key={product.name} className="group relative min-h-0 overflow-hidden rounded-2xl bg-white">
                 <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
@@ -184,7 +184,7 @@ const CorporateLanding = () => {
               </Link>
             ))}
           </div>
-          <div className="absolute -bottom-5 -left-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-[#171717] shadow-xl sm:-left-8">
+          <div className="absolute -bottom-5 -left-4 flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#171717] shadow-xl sm:-left-8">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-yellow"><Palette className="h-5 w-5" /></div>
             <div><p className="text-sm font-bold">Made your way</p><p className="text-xs text-gray-500">Print · engrave · embroider</p></div>
           </div>

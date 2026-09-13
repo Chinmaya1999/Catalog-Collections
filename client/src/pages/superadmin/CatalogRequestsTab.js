@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Phone, Search, Inbox, Trash2 } from 'lucide-react';
+import { Loader2, Phone, Search, Inbox, Trash2, Save, X } from 'lucide-react';
 import { API_ENDPOINTS } from '../../config/api';
 
 const STATUS_STYLES = {
@@ -21,6 +21,10 @@ const CatalogRequestsTab = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [editingRequest, setEditingRequest] = useState(null);
+  const [editStatus, setEditStatus] = useState('pending');
+  const [editNotes, setEditNotes] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -57,6 +61,41 @@ const CatalogRequestsTab = () => {
     }
     return list;
   }, [requests, filter, search]);
+
+  const updateRequest = async (requestId, payload) => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.catalogRequest}/${requestId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Request update failed');
+      setRequests(current => current.map(request => request._id === requestId ? data.catalogRequest : request));
+      setEditingRequest(null);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteRequest = async (request) => {
+    if (!window.confirm(`Delete the request from ${request.name || 'this customer'}?`)) return;
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.catalogRequest}/${request._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Request could not be deleted');
+      setRequests(current => current.map(item => item._id === request._id ? { ...item, isDeleted: true, deletedAt: new Date().toISOString() } : item));
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
   const activeCount = requests.filter(r => !r.isDeleted).length;
   const deletedCount = requests.filter(r => r.isDeleted).length;
@@ -133,6 +172,7 @@ const CatalogRequestsTab = () => {
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Admin Notes</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Requested</th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Deleted</th>
+                  <th className="px-6 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -170,6 +210,17 @@ const CatalogRequestsTab = () => {
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setEditingRequest(request); setEditStatus(request.status || 'pending'); setEditNotes(request.notes || ''); }}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-200"
+                        >
+                          <Save size={14} /> Update
+                        </button>
+                        {!request.isDeleted && <button onClick={() => deleteRequest(request)} className="rounded-lg bg-red-100 px-3 py-2 text-red-700 hover:bg-red-200" aria-label="Delete request"><Trash2 size={14} /></button>}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -177,6 +228,18 @@ const CatalogRequestsTab = () => {
           </div>
         )}
       </div>
+
+      {editingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between"><h3 className="text-xl font-bold text-gray-900">Update Catalog Request</h3><button onClick={() => setEditingRequest(null)} aria-label="Close"><X className="h-5 w-5" /></button></div>
+            <p className="mb-4 text-sm text-gray-600"><strong>{editingRequest.name || 'Customer'}</strong>: {editingRequest.message}</p>
+            <label className="block text-sm font-semibold text-gray-700">Status<select value={editStatus} onChange={event => setEditStatus(event.target.value)} className="mt-2 w-full rounded-xl border-2 border-gray-200 px-4 py-3"><option value="pending">Pending</option><option value="contacted">Contacted</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+            <label className="mt-4 block text-sm font-semibold text-gray-700">Admin Notes<textarea value={editNotes} onChange={event => setEditNotes(event.target.value)} rows="4" className="mt-2 w-full rounded-xl border-2 border-gray-200 px-4 py-3" placeholder="Add follow-up notes..." /></label>
+            <div className="mt-5 flex gap-3"><button onClick={() => setEditingRequest(null)} className="flex-1 rounded-xl bg-gray-100 px-4 py-3 font-bold">Cancel</button><button disabled={saving} onClick={() => updateRequest(editingRequest._id, { status: editStatus, notes: editNotes })} className="flex-1 rounded-xl bg-yellow-400 px-4 py-3 font-bold disabled:opacity-60">{saving ? 'Saving...' : 'Save Update'}</button></div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

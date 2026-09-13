@@ -34,6 +34,7 @@ import StatCard from './superadmin/StatCard';
 import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
 import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 import AnnouncementsTab from './superadmin/AnnouncementsTab';
+import ProductManagementTab from './superadmin/ProductManagementTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
+  { id: 'products', label: 'Shop Products', description: 'Manage every product shown in the public Shop', icon: Package },
   { id: 'catalog-pdfs', label: 'View All PDFs', description: 'View every uploaded catalog PDF', icon: FileText },
   { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
   { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
@@ -1199,6 +1201,9 @@ const SuperadminDashboard = () => {
 
         {/* Catalog Requests Tab */}
         {activeTab === 'catalog-requests' && <CatalogRequestsTab />}
+
+        {/* Shop Products Tab */}
+        {activeTab === 'products' && <ProductManagementTab />}
 
         {/* Announcements Tab */}
         {activeTab === 'announcements' && <AnnouncementsTab />}
