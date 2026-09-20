@@ -17,12 +17,16 @@ import {
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 
-const brandVideos = [
-  { src: '/uploads/video/20260920_065151_0_UTC_0.mp4', label: 'Behind the scenes' },
-  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_.mp4', label: 'Blank to branded' },
-  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-2.mp4', label: 'Precision printing' },
-  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-3.mp4', label: 'Packed and delivered' },
-].map((video) => ({ ...video, src: getImageUrl(video.src) }));
+const IMAGE_SLIDE_DURATION = 5000;
+
+const heroSlides = [
+  { type: 'video', src: '/uploads/video/20260920_065151_0_UTC_0.mp4', label: 'Behind the scenes' },
+  { type: 'video', src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_.mp4', label: 'Blank to branded' },
+  { type: 'video', src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-2.mp4', label: 'Precision printing' },
+  { type: 'video', src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-3.mp4', label: 'Packed and delivered' },
+].map((slide) => ({ ...slide, src: getImageUrl(slide.src) }));
+
+heroSlides.push({ type: 'image', src: '/images/brand-showcase.png', label: 'Everything we make' });
 
 const brandVideoPoster = getImageUrl(`/uploads/video/${encodeURIComponent('ChatGPT Image Sep 20, 2026 at 12_34_56 PM.png')}`);
 
@@ -86,12 +90,21 @@ const featuredProducts = [
   { name: 'Premium welcome kit', category: 'Corporate gifting', image: '/images/box3.png' },
 ];
 
-const heroProducts = [
-  { name: 'Executive gift box', label: 'Your logo. Your story.', image: '/images/box.png' },
-  { name: 'Diary and premium pen', label: 'Ideas people carry.', image: '/images/pen-diary.png' },
-  { name: 'Insulated steel bottle', label: 'Your brand, on the move.', image: '/images/stell bolltel.png' },
-  { name: 'Cardholder and keychain', label: 'Small details. Strong recall.', image: '/images/card.png' },
-  { name: 'Premium welcome kit', label: 'Gifts people keep.', image: '/images/box3.png' },
+const techniqueTiles = [
+  { title: 'T-shirt printing', description: 'Screen printing, DTF, sublimation, digital printing', image: '/images/showcase/tshirt-printing.png' },
+  { title: 'Bottle branding', description: 'UV printing, laser engraving, logo printing', image: '/images/showcase/bottle-branding.png' },
+  { title: 'Pen branding', description: 'Precision engraving, logo printing', image: '/images/showcase/pen-branding.png' },
+  { title: 'Diary & notebooks', description: 'Embossing, debossing, printing', image: '/images/showcase/diary-notebooks.png' },
+  { title: 'Laser engraving', description: 'Precision, premium finish', image: '/images/showcase/laser-engraving.png' },
+  { title: 'Mug customization', description: 'Your design, your style', image: '/images/showcase/mug-customization.png' },
+];
+
+const processTiles = [
+  { title: 'Your design', description: 'Share your logo or design', image: '/images/showcase/your-design.png' },
+  { title: 'Corporate gift sets', description: 'Thoughtful gifts, stronger relationships', image: '/images/showcase/corporate-gift-sets.png' },
+  { title: 'Bulk orders', description: 'For companies, events and promotions', image: '/images/showcase/bulk-orders.png' },
+  { title: 'Premium packaging', description: 'Make a lasting impression', image: '/images/showcase/premium-packaging.png' },
+  { title: 'Ready to deliver', description: 'From our team to your team', image: '/images/showcase/ready-to-deliver.png' },
 ];
 
 const servicePoints = [
@@ -117,21 +130,29 @@ const motionProps = {
 
 const CorporateLanding = () => {
   const [allProducts, setAllProducts] = useState(featuredProducts);
-  const [activeVideo, setActiveVideo] = useState(0);
+  const [activeSlide, setActiveSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef(null);
+  const currentSlide = heroSlides[activeSlide];
 
-  const handleVideoEnded = () => {
-    setActiveVideo((index) => (index + 1) % brandVideos.length);
+  const advanceSlide = () => {
+    setActiveSlide((index) => (index + 1) % heroSlides.length);
   };
 
   useEffect(() => {
+    if (currentSlide.type !== 'video') return;
     const videoEl = videoRef.current;
     if (!videoEl) return;
-    videoEl.src = brandVideos[activeVideo].src;
+    videoEl.src = currentSlide.src;
     videoEl.load();
     videoEl.play().catch(() => {});
-  }, [activeVideo]);
+  }, [activeSlide, currentSlide]);
+
+  useEffect(() => {
+    if (currentSlide.type !== 'image') return undefined;
+    const timer = setTimeout(advanceSlide, IMAGE_SLIDE_DURATION);
+    return () => clearTimeout(timer);
+  }, [activeSlide, currentSlide]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,105 +188,91 @@ const CorporateLanding = () => {
 
   return (
   <div className="overflow-hidden bg-white text-[#171717]">
-    <section className="relative border-b border-black/10 bg-white">
-      <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(0,0,0,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.035)_1px,transparent_1px)] [background-size:52px_52px]" />
-      <div className="absolute -right-24 top-10 h-80 w-80 rounded-full bg-brand-yellow/20 blur-3xl" />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-12 lg:px-8 lg:pb-24 lg:pt-20">
-        <motion.div {...motionProps} className="lg:col-span-6">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-gold">
+    <section className="relative overflow-hidden border-b border-black/10 bg-[#0a0a0a] text-white">
+      <div className="absolute inset-0">
+        {currentSlide.type === 'video' ? (
+          <video
+            ref={videoRef}
+            className="h-full w-full object-cover"
+            poster={brandVideoPoster}
+            autoPlay
+            muted={isMuted}
+            playsInline
+            onEnded={advanceSlide}
+          />
+        ) : (
+          <img src={currentSlide.src} alt={currentSlide.label} className="h-full w-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+        {currentSlide.type === 'video' && (
+          <div className="pointer-events-none absolute right-3 top-3 flex items-center rounded-lg bg-black/60 px-2.5 py-1.5 backdrop-blur-md sm:right-5 sm:top-5 lg:right-6">
+            <img src="/images/logo-mark.png" alt="Adihuman" className="h-4 w-auto sm:h-5" />
+          </div>
+        )}
+      </div>
+
+      <div className="relative mx-auto flex min-h-[640px] max-w-7xl flex-col justify-center px-4 pb-16 pt-28 sm:px-6 lg:min-h-[720px] lg:px-8 lg:pb-24 lg:pt-32">
+        <motion.div {...motionProps} className="max-w-2xl">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-yellow backdrop-blur-md">
             <Sparkles className="h-4 w-4" />
             Corporate gifting, made personal
           </div>
-          <h1 className="max-w-3xl text-5xl font-display font-bold leading-[0.98] tracking-tight text-[#171717] sm:text-6xl lg:text-7xl">
+          <h1 className="text-5xl font-display font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl">
             Put your brand in <span className="text-brand-yellow">everyday moments.</span>
           </h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-gray-600 sm:text-xl">
+          <p className="mt-7 max-w-xl text-lg leading-8 text-white/75 sm:text-xl">
             Custom T-shirts, premium gift sets, home accessories, electronics, bottles, mugs and more, made for your people and packed for your brand.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link to="/catalog-request" className="btn-primary inline-flex items-center justify-center gap-2">
               Build your gift order <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-lg border border-black/20 px-6 py-3 font-semibold text-[#171717] transition hover:border-brand-gold hover:text-brand-gold">
+            <Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/25 px-6 py-3 font-semibold text-white transition hover:border-brand-yellow hover:text-brand-yellow">
               Explore products <ArrowUpRight className="h-5 w-5" />
             </Link>
           </div>
-          <div className="mt-12 grid max-w-xl grid-cols-3 gap-5 border-t border-black/10 pt-6">
-            <div><p className="text-2xl font-bold text-brand-gold">1000+</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Businesses served</p></div>
-            <div><p className="text-2xl font-bold text-brand-gold">1,000+</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Ways to customize</p></div>
-            <div><p className="text-2xl font-bold text-brand-gold">Bulk</p><p className="mt-1 text-xs uppercase tracking-wider text-gray-500">Order friendly</p></div>
-          </div>
-        </motion.div>
-
-        <motion.div {...motionProps} transition={{ duration: 0.65, delay: 0.12 }} className="relative lg:col-span-6 lg:pl-8">
-          <div className="relative grid aspect-[0.9] grid-cols-2 gap-3 overflow-hidden rounded-[2rem] border border-black/10 bg-[#f3f3f3] p-3 shadow-2xl shadow-black/10">
-            {heroProducts.slice(0, 4).map((product) => (
-              <Link to="/shop" aria-label={`Shop ${product.name}`} key={product.name} className="group relative min-h-0 overflow-hidden rounded-2xl bg-white">
-                <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-brand-yellow">{product.label}</p>
-                  <p className="mt-1 text-sm font-bold text-white sm:text-base">{product.name}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="absolute -bottom-5 -left-4 flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#171717] shadow-xl sm:-left-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-yellow"><Palette className="h-5 w-5" /></div>
-            <div><p className="text-sm font-bold">Made your way</p><p className="text-xs text-gray-500">Print · engrave · embroider</p></div>
+          <div className="mt-12 grid max-w-xl grid-cols-3 gap-5 border-t border-white/15 pt-6">
+            <div><p className="text-2xl font-bold text-brand-yellow">1000+</p><p className="mt-1 text-xs uppercase tracking-wider text-white/55">Businesses served</p></div>
+            <div><p className="text-2xl font-bold text-brand-yellow">1,000+</p><p className="mt-1 text-xs uppercase tracking-wider text-white/55">Ways to customize</p></div>
+            <div><p className="text-2xl font-bold text-brand-yellow">Bulk</p><p className="mt-1 text-xs uppercase tracking-wider text-white/55">Order friendly</p></div>
           </div>
         </motion.div>
       </div>
-    </section>
 
-    <section className="relative overflow-hidden bg-[#0c0c0c] text-white">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-        <motion.div {...motionProps} className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-yellow">See it in action</p>
-            <h2 className="mt-3 text-4xl font-display font-bold leading-tight sm:text-5xl">This is what we actually do.</h2>
+      <div className="absolute inset-x-4 bottom-6 flex items-center justify-between gap-4 sm:inset-x-6 lg:inset-x-8">
+        <div className="inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-md">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-yellow opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-yellow" />
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white sm:text-[10px]">{currentSlide.label}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden gap-1.5 sm:flex">
+            {heroSlides.map((slide, index) => (
+              <button
+                key={slide.src}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={`Show ${slide.label}`}
+                className="h-1 w-8 overflow-hidden rounded-full bg-white/25"
+              >
+                <span className={`block h-full rounded-full bg-brand-yellow transition-all duration-300 ${index === activeSlide ? 'w-full' : index < activeSlide ? 'w-full opacity-60' : 'w-0'}`} />
+              </button>
+            ))}
           </div>
-          <p className="max-w-md text-sm leading-6 text-white/60">From a blank product to a finished, branded piece, printed, engraved and packed, ready for your team.</p>
-        </motion.div>
-
-        <motion.div {...motionProps} transition={{ duration: 0.65, delay: 0.1 }} className="relative overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
-          <div className="relative aspect-video w-full">
-            <video
-              ref={videoRef}
-              className="h-full w-full object-cover"
-              poster={brandVideoPoster}
-              autoPlay
-              muted={isMuted}
-              playsInline
-              onEnded={handleVideoEnded}
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-5 sm:p-8">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand-yellow">{brandVideos[activeVideo].label}</p>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex gap-2">
-                  {brandVideos.map((video, index) => (
-                    <button
-                      key={video.src}
-                      type="button"
-                      onClick={() => setActiveVideo(index)}
-                      aria-label={`Play ${video.label}`}
-                      className={`h-1.5 rounded-full transition-all ${index === activeVideo ? 'w-8 bg-brand-yellow' : 'w-4 bg-white/30 hover:bg-white/50'}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMuted((muted) => !muted)}
-                  aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur transition hover:bg-white/20"
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+          {currentSlide.type === 'video' && (
+            <button
+              type="button"
+              onClick={() => setIsMuted((muted) => !muted)}
+              aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60"
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
       </div>
     </section>
 
@@ -340,6 +347,45 @@ const CorporateLanding = () => {
             </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+
+    <section className="bg-[#fafafa] py-20 sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <motion.div {...motionProps} className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-gold">How we brand it</p>
+          <h2 className="mt-3 text-4xl font-display font-bold leading-tight sm:text-5xl">Our techniques, up close.</h2>
+        </motion.div>
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {techniqueTiles.map((tile, index) => (
+            <motion.div {...motionProps} transition={{ duration: 0.45, delay: index * 0.05 }} key={tile.title} className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-1 hover:border-brand-yellow hover:shadow-xl">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img src={tile.image} alt={`${tile.title}: ${tile.description}`} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div {...motionProps} className="mt-16 max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-gold">From idea to your doorstep</p>
+          <h2 className="mt-3 text-4xl font-display font-bold leading-tight sm:text-5xl">Here is exactly what we do.</h2>
+        </motion.div>
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {processTiles.map((tile, index) => (
+            <motion.div {...motionProps} transition={{ duration: 0.45, delay: index * 0.05 }} key={tile.title} className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-1 hover:border-brand-yellow hover:shadow-xl">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#171717] text-xs font-bold text-brand-yellow absolute left-3 top-3 z-10">{index + 1}</div>
+              <div className="aspect-[4/3] overflow-hidden">
+                <img src={tile.image} alt={`${tile.title}: ${tile.description}`} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div {...motionProps} className="mt-10">
+          <Link to="/catalog-request" className="group block overflow-hidden rounded-2xl shadow-lg transition hover:shadow-2xl">
+            <img src="/images/showcase/closing-banner.png" alt="Let's create something branded. Get a custom quote." loading="lazy" className="h-auto w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+          </Link>
+        </motion.div>
       </div>
     </section>
 
