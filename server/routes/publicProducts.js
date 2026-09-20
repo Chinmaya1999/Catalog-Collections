@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
       const q = req.query.search.trim();
       if (q) {
         const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [{ name: re }, { brand: re }, { material: re }, { description: re }];
+        filter.$or = [{ name: re }, { brand: re }, { material: re }, { description: re }, { 'variants.sku': re }];
       }
     }
     if (req.query.brand) filter.brand = req.query.brand;
@@ -102,7 +102,8 @@ router.get('/', async (req, res) => {
             colors: [
               { $unwind: '$colors' },
               { $match: { 'colors.name': { $ne: null } } },
-              { $group: { _id: { $toUpper: '$colors.name' }, count: { $sum: 1 } } },
+              { $group: { _id: { $toUpper: { $trim: { input: '$colors.name' } } }, count: { $sum: 1 } } },
+              { $match: { _id: { $ne: '' } } },
               { $sort: { _id: 1 } }
             ],
             priceRange: [

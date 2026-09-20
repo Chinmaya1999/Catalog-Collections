@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
+import { swatchColor } from '../utils/colorSwatch';
 
 // Same WhatsApp number the order calculator sends quotation requests to
 const WHATSAPP_NUMBER = '918296810381';
@@ -34,6 +35,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -46,6 +48,7 @@ const ProductDetail = () => {
           setRelated(data.related || []);
           setSelectedImage(0);
           setSelectedVariantIdx(0);
+          setSelectedColorIdx(0);
         } else {
           setProduct(null);
         }
@@ -78,6 +81,7 @@ const ProductDetail = () => {
   const images = product.images && product.images.length > 0 ? product.images : [];
   const activeImage = images[selectedImage] || images[0];
   const variant = product.variants?.[selectedVariantIdx] || {};
+  const selectedColor = product.colors?.[selectedColorIdx] || null;
   const price = typeof variant.sellingPrice === 'number' ? variant.sellingPrice : variant.mrp;
   const showStrikethrough = typeof variant.sellingPrice === 'number' && typeof variant.mrp === 'number' && variant.sellingPrice < variant.mrp;
 
@@ -100,7 +104,7 @@ const ProductDetail = () => {
       variant.dimensionsCm ? `Dimensions: ${variant.dimensionsCm} cm` : null,
       typeof variant.weightKg === 'number' ? `Weight: ${variant.weightKg} kg` : null,
       typeof variant.volumeLtr === 'number' ? `Volume: ${variant.volumeLtr} L` : null,
-      product.colors?.length > 0 ? `Colours: ${product.colors.map((c) => c.name).filter(Boolean).join(', ')}` : null,
+      selectedColor?.name ? `Colour: ${selectedColor.name}${selectedColor.code ? ` (${selectedColor.code})` : ''}` : null,
       `Price: ${formatPrice(price)}`,
       `Link: ${window.location.href}`
     ].filter(Boolean);
@@ -177,15 +181,31 @@ const ProductDetail = () => {
 
               {product.colors?.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-brand-dark text-sm mb-2">Available Colours</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <h3 className="font-semibold text-brand-dark text-sm mb-2">
+                    Available Colours{selectedColor?.name ? <span className="font-normal text-gray-500"> — {selectedColor.name}</span> : ''}
+                  </h3>
+                  <div className="flex flex-wrap gap-2.5">
                     {product.colors.map((c, i) => (
-                      <span key={i} className="flex items-center gap-1.5 text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
-                        {c.thumbnailImage && (
-                          <img src={getImageUrl(c.thumbnailImage)} alt="" className="w-4 h-4 rounded-full object-cover" />
+                      <button
+                        type="button"
+                        key={i}
+                        onClick={() => setSelectedColorIdx(i)}
+                        aria-pressed={selectedColorIdx === i}
+                        aria-label={c.name || `Colour ${i + 1}`}
+                        title={c.name}
+                        style={c.thumbnailImage ? undefined : { backgroundColor: c.code || swatchColor(c.name) }}
+                        className={`w-9 h-9 rounded-full border-2 overflow-hidden flex items-center justify-center transition-all ${
+                          selectedColorIdx === i ? 'border-brand-gold scale-110 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {c.thumbnailImage ? (
+                          <img src={getImageUrl(c.thumbnailImage)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          selectedColorIdx === i && (
+                            <Check className={`w-4 h-4 ${['white', 'silver', 'beige', 'ivory', 'cream'].includes((c.name || '').toLowerCase()) ? 'text-gray-700' : 'text-white'}`} />
+                          )
                         )}
-                        {c.name}{c.code ? ` (${c.code})` : ''}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>

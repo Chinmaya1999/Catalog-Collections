@@ -15,6 +15,7 @@ const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
 const CatalogRequest = lazy(() => import('./pages/CatalogRequest'));
+const OrderCalculator = lazy(() => import('./pages/OrderCalculator'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -43,6 +44,7 @@ const AppLayout = () => {
             <Route path="/catalog" element={<Navigate to="/" replace />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/:id" element={<ProductDetail />} />
+            <Route path="/order-calculator" element={<OrderCalculator />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
             <Route path="/catalog-request" element={<CatalogRequest />} />

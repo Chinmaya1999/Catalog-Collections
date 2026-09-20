@@ -15,7 +15,9 @@ import {
   Image as ImageIcon,
   Plus,
   Copy,
-  Globe
+  Globe,
+  Search,
+  X
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
 
@@ -344,6 +346,7 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [exporting, setExporting] = useState('');
   const [approvingAll, setApprovingAll] = useState(false);
   const [bulkBrand, setBulkBrand] = useState('');
@@ -364,7 +367,17 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const filtered = statusFilter === 'all' ? products : products.filter(p => p.status === statusFilter);
+  const statusFiltered = statusFilter === 'all' ? products : products.filter(p => p.status === statusFilter);
+  const searchQuery = search.trim().toLowerCase();
+  const filtered = !searchQuery ? statusFiltered : statusFiltered.filter(p => {
+    const haystacks = [
+      p.name,
+      p.brand,
+      p.categoryName,
+      ...(p.variants || []).map(v => v.sku)
+    ];
+    return haystacks.some(value => (value || '').toLowerCase().includes(searchQuery));
+  });
 
   const runExport = async (type) => {
     setExporting(type);
@@ -517,7 +530,7 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2">
           {['all', 'pending', 'approved', 'rejected'].map((s) => (
             <button
@@ -531,6 +544,24 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
             </button>
           ))}
         </div>
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, brand or SKU..."
+            className="w-full rounded-full border border-gray-200 bg-white py-1.5 pl-9 pr-8 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100"
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {products.some(p => p.status !== 'approved') && (
           <button
             onClick={approveAll}
@@ -548,7 +579,7 @@ const ReviewPanel = ({ job, authHeaders, onBack, onJobChanged }) => {
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-xl">
           <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No products in this filter yet{job.status === 'processing' ? ' — still processing…' : ''}</p>
+          <p className="text-gray-500">{search ? `No products match "${search}".` : `No products in this filter yet${job.status === 'processing' ? ' — still processing…' : ''}`}</p>
         </div>
       ) : (
         <div className="space-y-4">

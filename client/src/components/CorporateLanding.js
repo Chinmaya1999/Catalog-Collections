@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -132,8 +132,10 @@ const CorporateLanding = () => {
   const [allProducts, setAllProducts] = useState(featuredProducts);
   const [activeSlide, setActiveSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
+  const [iconOffset, setIconOffset] = useState(0);
   const videoRef = useRef(null);
   const currentSlide = heroSlides[activeSlide];
+  const heroIconCount = Math.min(4, allProducts.length);
 
   const advanceSlide = () => {
     setActiveSlide((index) => (index + 1) % heroSlides.length);
@@ -153,6 +155,14 @@ const CorporateLanding = () => {
     const timer = setTimeout(advanceSlide, IMAGE_SLIDE_DURATION);
     return () => clearTimeout(timer);
   }, [activeSlide, currentSlide]);
+
+  useEffect(() => {
+    if (allProducts.length <= heroIconCount) return undefined;
+    const interval = setInterval(() => {
+      setIconOffset((offset) => (offset + heroIconCount) % allProducts.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [allProducts.length, heroIconCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +249,35 @@ const CorporateLanding = () => {
           </div>
         </motion.div>
       </div>
+
+      {heroIconCount > 0 && (
+        <div className="pointer-events-none absolute inset-y-0 right-4 z-10 hidden flex-col items-center justify-center gap-5 md:right-8 md:flex lg:right-14">
+          {Array.from({ length: heroIconCount }).map((_, slot) => {
+            const product = allProducts[(iconOffset + slot) % allProducts.length];
+            return (
+              <Link
+                key={slot}
+                to={product.href || '/shop'}
+                aria-label={`Shop ${product.name}`}
+                className="pointer-events-auto block transition hover:scale-110"
+              >
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={`${product.name}-${iconOffset}-${slot}`}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.35 }}
+                    className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 bg-white/10 shadow-lg backdrop-blur-md transition hover:border-brand-yellow sm:h-16 sm:w-16"
+                  >
+                    <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                  </motion.span>
+                </AnimatePresence>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <div className="absolute inset-x-4 bottom-6 flex items-center justify-between gap-4 sm:inset-x-6 lg:inset-x-8">
         <div className="inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-md">

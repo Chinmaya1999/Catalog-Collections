@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Vendor = require('../models/Vendor');
 const Catalog = require('../models/Catalog');
+const Product = require('../models/Product');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const XLSX = require('xlsx');
@@ -98,6 +99,45 @@ router.get('/product/:productCode', async (req, res) => {
   } catch (error) {
     console.error('Error fetching vendors by product code:', error);
     res.status(500).json({ message: 'Error fetching vendors by product code', error: error.message });
+  }
+});
+
+// Combined lookup for the admin "Find Product Vendors" tool (public - no auth
+// required, same as the other product lookups above): given a SKU/product
+// code, finds the matching Shop product (with photos and which catalog PDF
+// it was extracted from) plus any vendors already on file for that same
+// code, so admins can go straight from a SKU to "who sells this locally".
+router.get('/product-lookup/:code', async (req, res) => {
+  try {
+    const raw = (req.params.code || '').trim();
+    if (!raw) return res.json({ product: null, vendors: [] });
+
+    const exact = new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+
+    const [product, vendors] = await Promise.all([
+      Product.findOne({ 'variants.sku': exact })
+        .select('name brand categoryName images variants source')
+        .populate('source.jobId', 'originalName'),
+      Vendor.find({ $or: [{ productCode: exact }, { productCodes: exact }], active: true })
+        .populate('catalogId', 'name categoryName pdfFile priceRange')
+    ]);
+
+    res.json({
+      product: product ? {
+        _id: product._id,
+        name: product.name,
+        brand: product.brand,
+        categoryName: product.categoryName,
+        images: product.images,
+        catalog: product.source?.jobId
+          ? { _id: product.source.jobId._id, name: product.source.jobId.originalName }
+          : null
+      } : null,
+      vendors
+    });
+  } catch (error) {
+    console.error('Error in product lookup:', error);
+    res.status(500).json({ message: 'Error looking up product', error: error.message });
   }
 });
 

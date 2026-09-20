@@ -10,16 +10,18 @@ import {
   ChevronRight,
   Heart,
   ArrowUpDown,
+  ArrowRight,
   ChevronDown,
   RotateCcw,
   Sparkles,
   Check,
+  Calculator,
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
-import ProductOrderCalculator from '../components/ProductOrderCalculator';
 import PriceNoticeBanner from '../components/PriceNoticeBanner';
 import { useSavedProducts } from '../hooks/useSavedProducts';
+import { swatchColor } from '../utils/colorSwatch';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -27,18 +29,6 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'name_asc', label: 'Name: A to Z' }
 ];
-
-// Best-effort swatch colour for facet colour names (which arrive upper-cased and without a
-// hex code) - falls back to a neutral dot for anything unrecognised, with the name always
-// shown alongside so meaning is never carried by colour alone.
-const COLOR_SWATCH_MAP = {
-  black: '#111827', white: '#ffffff', grey: '#9ca3af', gray: '#9ca3af', red: '#ef4444',
-  blue: '#3b82f6', navy: '#1e3a5f', green: '#22c55e', yellow: '#eab308', gold: '#d4af37',
-  orange: '#f97316', purple: '#a855f7', pink: '#ec4899', brown: '#92400e', beige: '#e8dcc8',
-  silver: '#c0c0c0', maroon: '#7f1d1d', teal: '#14b8a6', cyan: '#06b6d4', khaki: '#bdb76b',
-  olive: '#808000', wine: '#722f37', tan: '#d2b48c'
-};
-const swatchColor = (name) => COLOR_SWATCH_MAP[(name || '').toLowerCase()] || '#d1d5db';
 
 const formatPrice = (n) => (typeof n === 'number' ? `₹${n.toLocaleString('en-IN')}` : 'Price on request');
 
@@ -184,7 +174,7 @@ const FilterPill = ({ active, onClick, children }) => (
 );
 
 const FilterSections = ({
-  filterOptions, category, setCategory, brand, setBrand, color, setColor,
+  filterOptions, category, setCategory, brand, setBrand,
   minPrice, setMinPrice, maxPrice, setMaxPrice
 }) => (
   <div className="space-y-6">
@@ -224,28 +214,6 @@ const FilterSections = ({
         </div>
       </div>
     )}
-
-    {filterOptions.colors.length > 0 && (
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Colour</h3>
-        <div className="flex flex-wrap gap-2">
-          {filterOptions.colors.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              onClick={() => setColor(color === c.name ? '' : c.name)}
-              title={`${c.name} (${c.count})`}
-              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                color === c.name ? 'border-brand-gold scale-110' : 'border-gray-200 hover:border-gray-300'
-              }`}
-              style={{ backgroundColor: swatchColor(c.name) }}
-            >
-              {color === c.name && <Check className={`w-3.5 h-3.5 ${['white', 'silver', 'beige', 'tan'].includes(c.name.toLowerCase()) ? 'text-gray-700' : 'text-white'}`} />}
-            </button>
-          ))}
-        </div>
-      </div>
-    )}
   </div>
 );
 
@@ -261,7 +229,6 @@ const Shop = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
-  const [color, setColor] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sort, setSort] = useState('newest');
@@ -275,7 +242,7 @@ const Shop = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, category, brand, color, minPrice, maxPrice, sort]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, category, brand, minPrice, maxPrice, sort]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -284,7 +251,6 @@ const Shop = () => {
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (category) params.set('category', category);
       if (brand) params.set('brand', brand);
-      if (color) params.set('color', color);
       if (minPrice) params.set('minPrice', minPrice);
       if (maxPrice) params.set('maxPrice', maxPrice);
       params.set('sort', sort);
@@ -302,12 +268,12 @@ const Shop = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, category, brand, color, minPrice, maxPrice, sort, page]);
+  }, [debouncedSearch, category, brand, minPrice, maxPrice, sort, page]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const activeFilterCount = (category ? 1 : 0) + (brand ? 1 : 0) + (color ? 1 : 0) + (minPrice || maxPrice ? 1 : 0);
-  const clearFilters = () => { setCategory(''); setBrand(''); setColor(''); setMinPrice(''); setMaxPrice(''); };
+  const activeFilterCount = (category ? 1 : 0) + (brand ? 1 : 0) + (minPrice || maxPrice ? 1 : 0);
+  const clearFilters = () => { setCategory(''); setBrand(''); setMinPrice(''); setMaxPrice(''); };
 
   const activeChips = useMemo(() => {
     const chips = [];
@@ -316,7 +282,6 @@ const Shop = () => {
       chips.push({ key: 'category', label: c ? c.name : 'Category', clear: () => setCategory('') });
     }
     if (brand) chips.push({ key: 'brand', label: brand, clear: () => setBrand('') });
-    if (color) chips.push({ key: 'color', label: color, clear: () => setColor('') });
     if (minPrice || maxPrice) {
       chips.push({
         key: 'price',
@@ -325,14 +290,14 @@ const Shop = () => {
       });
     }
     return chips;
-  }, [category, brand, color, minPrice, maxPrice, filterOptions]);
+  }, [category, brand, minPrice, maxPrice, filterOptions]);
 
   const goToPage = (p) => {
     setPage(p);
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const filterSectionProps = { filterOptions, category, setCategory, brand, setBrand, color, setColor, minPrice, setMinPrice, maxPrice, setMaxPrice };
+  const filterSectionProps = { filterOptions, category, setCategory, brand, setBrand, minPrice, setMinPrice, maxPrice, setMaxPrice };
 
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
@@ -397,7 +362,7 @@ const Shop = () => {
         <PriceNoticeBanner />
       </div>
 
-      {/* Bulk Pricing Calculator */}
+      {/* Bulk Pricing Calculator promo */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -405,7 +370,27 @@ const Shop = () => {
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.5 }}
         >
-          <ProductOrderCalculator />
+          <Link
+            to="/order-calculator"
+            className="group flex flex-col sm:flex-row sm:items-center justify-between gap-5 rounded-3xl border border-gray-100 shadow-lg overflow-hidden bg-gradient-to-r from-brand-yellow to-brand-gold px-6 sm:px-8 py-6"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-white/40 flex items-center justify-center shrink-0">
+                <Calculator className="w-6 h-6 text-brand-dark" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-display font-extrabold text-brand-dark">
+                  What do you want to order?
+                </h2>
+                <p className="text-brand-dark/80 text-sm mt-0.5">
+                  Pick a brand and quantity — see your bulk discount instantly and quote on WhatsApp.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center justify-center gap-2 bg-brand-dark text-white font-bold px-5 py-3 rounded-xl shrink-0 transition-transform group-hover:translate-x-1">
+              Open Calculator <ArrowRight className="w-4 h-4" />
+            </span>
+          </Link>
         </motion.div>
       </section>
 

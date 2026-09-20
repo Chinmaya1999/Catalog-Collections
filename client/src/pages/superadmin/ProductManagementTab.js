@@ -1,6 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Edit, ImagePlus, Loader2, PackageSearch, Save, Trash2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BookOpen, Edit, ImagePlus, Loader2, PackageSearch, Save, Search, Trash2, X } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
+
+const formatDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 const emptyForm = {
   name: '',
@@ -23,6 +29,10 @@ const ProductManagementTab = () => {
   const [showProductEditor, setShowProductEditor] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedImageFiles, setSelectedImageFiles] = useState([]);
+  const [search, setSearch] = useState('');
+  const [catalogFilter, setCatalogFilter] = useState(null);
+  const [viewingCatalog, setViewingCatalog] = useState(null);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -42,6 +52,50 @@ const ProductManagementTab = () => {
   useEffect(() => { fetchProducts(); }, []);
 
   const getPrimaryImage = (product) => product.images?.find(image => image.isPrimary) || product.images?.[0];
+  const getSkus = (product) => (product.variants || []).map(variant => variant.sku).filter(Boolean);
+  const getCatalog = (product) => (product.source?.jobId && typeof product.source.jobId === 'object' ? product.source.jobId : null);
+
+  const filteredProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return products.filter(product => {
+      if (catalogFilter && getCatalog(product)?._id !== catalogFilter) return false;
+      if (!query) return true;
+      const haystacks = [
+        product.name,
+        product.brand,
+        product.categoryName,
+        ...getSkus(product)
+      ];
+      return haystacks.some(value => (value || '').toLowerCase().includes(query));
+    });
+  }, [products, search, catalogFilter]);
+
+  const openCatalog = async (jobId) => {
+    setLoadingCatalog(true);
+    setViewingCatalog({ _id: jobId });
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) setViewingCatalog(await response.json());
+      else setViewingCatalog(null);
+    } catch (error) {
+      console.error('Error fetching catalog:', error);
+      setViewingCatalog(null);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
+  const showOnlyThisCatalog = () => {
+    setCatalogFilter(viewingCatalog._id);
+    setViewingCatalog(null);
+  };
+
+  const activeCatalogName = catalogFilter
+    ? products.find(product => getCatalog(product)?._id === catalogFilter)?.source?.jobId?.originalName
+    : null;
 
   const startEditing = (product) => {
     const primaryImage = getPrimaryImage(product);
@@ -200,15 +254,45 @@ const ProductManagementTab = () => {
           <h2 className="text-2xl font-bold text-gray-900">Shop Product Management</h2>
           <p className="mt-1 text-gray-600">Edit the products, images, prices and details shown on the public Shop page.</p>
         </div>
-        <div className="flex items-center gap-3"><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{products.length} products</span></div>
+        <div className="flex items-center gap-3"><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{filteredProducts.length} of {products.length} products</span></div>
       </div>
 
-      {products.length === 0 ? (
-        <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">No products found.</p></div>
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          placeholder="Search by name, brand or SKU code..."
+          className="w-full rounded-xl border-2 border-gray-200 py-2.5 pl-10 pr-9 text-sm focus:border-yellow-400 focus:outline-none"
+        />
+        {search && (
+          <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {catalogFilter && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 font-semibold text-blue-700">
+            <BookOpen className="h-3.5 w-3.5" />
+            Catalog: {activeCatalogName || 'Unknown'}
+            <button type="button" onClick={() => setCatalogFilter(null)} aria-label="Clear catalog filter" className="ml-1 text-blue-500 hover:text-blue-800">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        </div>
+      )}
+
+      {filteredProducts.length === 0 ? (
+        <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{search ? `No products match "${search}".` : 'No products found.'}</p></div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {products.map(product => {
+          {filteredProducts.map(product => {
             const primaryImage = getPrimaryImage(product);
+            const skus = getSkus(product);
+            const catalog = getCatalog(product);
             return (
               <div key={product._id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="relative h-52 bg-gray-100">
@@ -218,6 +302,16 @@ const ProductManagementTab = () => {
                 <div className="p-5">
                   <p className="text-xs font-bold uppercase tracking-wider text-yellow-600">{product.categoryName || 'Uncategorized'}</p>
                   <h3 className="mt-1 line-clamp-2 text-lg font-bold text-gray-900">{product.name || 'Unnamed product'}</h3>
+                  {skus.length > 0 && <p className="mt-1 text-xs font-mono text-gray-400">SKU: {skus.join(', ')}</p>}
+                  {catalog && (
+                    <button
+                      type="button"
+                      onClick={() => openCatalog(catalog._id)}
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <BookOpen className="h-3 w-3" /> {catalog.originalName}
+                    </button>
+                  )}
                   <p className="mt-2 line-clamp-2 text-sm text-gray-500">{product.description || 'No description'}</p>
                   <p className="mt-3 font-bold text-gray-900">{product.priceFrom == null ? 'Price on request' : `₹${product.priceFrom.toLocaleString('en-IN')}`}</p>
                   <div className="mt-4 flex gap-2">
@@ -246,6 +340,47 @@ const ProductManagementTab = () => {
             <div className="mt-5 flex flex-wrap gap-5"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.isPublished} onChange={event => setForm({ ...form, isPublished: event.target.checked })} className="h-5 w-5 accent-yellow-400" /> Show in Shop</label><label className="flex items-center gap-2 text-sm font-semibold">Status<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value })} className="rounded-lg border border-gray-300 px-2 py-1"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label></div>
             <div className="mt-7 flex gap-3"><button type="button" onClick={closeEditor} className="flex-1 rounded-xl bg-gray-100 px-5 py-3 font-bold text-gray-700 hover:bg-gray-200">Cancel</button><button type="submit" disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 font-bold text-gray-900 hover:bg-yellow-500 disabled:opacity-60"><Save className="h-4 w-4" />{saving ? 'Saving...' : 'Save changes'}</button></div>
           </form>
+        </div>
+      )}
+
+      {viewingCatalog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><BookOpen className="h-5 w-5" /></div>
+                <h3 className="text-xl font-bold text-gray-900">Catalog details</h3>
+              </div>
+              <button type="button" onClick={() => setViewingCatalog(null)} className="rounded-lg p-2 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5" /></button>
+            </div>
+
+            {loadingCatalog ? (
+              <div className="py-8 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-yellow-500" /></div>
+            ) : !viewingCatalog.originalName ? (
+              <p className="text-sm text-gray-500">This catalog could not be found — it may have been deleted.</p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-lg font-bold text-gray-900 break-words">{viewingCatalog.originalName}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Uploaded {formatDate(viewingCatalog.createdAt) || 'date unknown'} · Status: {viewingCatalog.status || 'unknown'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 rounded-xl bg-gray-50 p-4 text-center">
+                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.totalPages ?? '–'}</p><p className="text-[11px] text-gray-500">Pages</p></div>
+                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.productsFound ?? '–'}</p><p className="text-[11px] text-gray-500">Products found</p></div>
+                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.imagesFound ?? '–'}</p><p className="text-[11px] text-gray-500">Images</p></div>
+                </div>
+                <button
+                  type="button"
+                  onClick={showOnlyThisCatalog}
+                  className="w-full rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-gray-900 hover:bg-yellow-500"
+                >
+                  Show only products from this catalog
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

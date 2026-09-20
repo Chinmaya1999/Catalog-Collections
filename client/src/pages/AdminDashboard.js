@@ -14,7 +14,10 @@ import {
   Menu,
   X,
   LogOut,
-  Trash2
+  Trash2,
+  BookOpen,
+  Loader2,
+  PackageSearch
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
@@ -41,6 +44,9 @@ const AdminDashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [userLocation, setUserLocation] = useState({ latitude: '', longitude: '' });
+  const [skuProduct, setSkuProduct] = useState(null);
+  const [skuLoading, setSkuLoading] = useState(false);
+  const [skuSearched, setSkuSearched] = useState('');
   
   // Catalog request vendor search state
   const [requestVendorSearch, setRequestVendorSearch] = useState({
@@ -140,19 +146,21 @@ const AdminDashboard = () => {
     e.preventDefault();
     setSearching(true);
     setSearchResults([]);
+    setSkuProduct(null);
+    setSkuSearched('');
 
     try {
       const { productCode, vendorName, location, phoneNumber, latitude, longitude } = vendorSearch;
-      
+
       // Build search parameters
       const searchParams = new URLSearchParams();
       if (productCode) searchParams.append('productCode', productCode);
       if (vendorName) searchParams.append('vendorName', vendorName);
       if (location) searchParams.append('location', location);
       if (phoneNumber) searchParams.append('phoneNumber', phoneNumber);
-      
+
       let url = `${API_ENDPOINTS.vendor}/search?${searchParams.toString()}`;
-      
+
       // Always include location if available
       if (userLocation.latitude && userLocation.longitude) {
         url += `&latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
@@ -163,13 +171,32 @@ const AdminDashboard = () => {
       console.log('Searching vendors with URL:', url);
       const response = await fetch(url);
       const data = await response.json();
-      
+
       console.log('Search results:', data);
-      
+
       if (response.ok) {
         setSearchResults(data);
       } else {
         console.error('Search failed:', data.message);
+      }
+
+      // A product code doubles as a Shop product's SKU - look up the matching
+      // product (photos + which catalog PDF it came from) alongside the vendor
+      // search above, so a SKU search surfaces both in one go.
+      const trimmedCode = productCode.trim();
+      if (trimmedCode) {
+        setSkuLoading(true);
+        setSkuSearched(trimmedCode);
+        try {
+          const skuRes = await fetch(`${API_ENDPOINTS.vendor}/product-lookup/${encodeURIComponent(trimmedCode)}`);
+          const skuData = await skuRes.json();
+          setSkuProduct(skuRes.ok ? skuData.product : null);
+        } catch (skuError) {
+          console.error('Error looking up product by SKU:', skuError);
+          setSkuProduct(null);
+        } finally {
+          setSkuLoading(false);
+        }
       }
     } catch (error) {
       console.error('Error searching vendors:', error);
@@ -479,13 +506,13 @@ const AdminDashboard = () => {
                 <form onSubmit={handleVendorSearch} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Product Code</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Product Code / SKU</label>
                       <input
                         type="text"
                         value={vendorSearch.productCode}
                         onChange={(e) => setVendorSearch({ ...vendorSearch, productCode: e.target.value })}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                        placeholder="Enter product code"
+                        placeholder="Enter product code or SKU"
                       />
                     </div>
                     <div>
@@ -554,6 +581,52 @@ const AdminDashboard = () => {
                   </div>
                 </form>
               </div>
+
+              {/* Matched Shop Product (by SKU / product code) + which catalog it came from */}
+              {skuLoading && (
+                <div className="border-t border-gray-200 p-6 text-center text-gray-400">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                </div>
+              )}
+              {!skuLoading && skuSearched && (
+                <div className="border-t border-gray-200 p-6">
+                  {skuProduct ? (
+                    <div className="flex flex-col sm:flex-row gap-5 bg-gray-50 rounded-2xl p-5">
+                      <div className="flex gap-2 overflow-x-auto sm:w-48 shrink-0">
+                        {skuProduct.images?.length > 0 ? (
+                          skuProduct.images.slice(0, 4).map((image, idx) => (
+                            <img
+                              key={image._id || idx}
+                              src={getImageUrl(image.path)}
+                              alt={skuProduct.name || 'Product'}
+                              className="w-20 h-20 sm:w-full sm:h-auto sm:aspect-square rounded-xl object-contain bg-white border border-gray-200 shrink-0"
+                            />
+                          ))
+                        ) : (
+                          <div className="w-20 h-20 sm:w-full sm:aspect-square rounded-xl bg-white border border-gray-200 flex items-center justify-center">
+                            <PackageSearch className="w-8 h-8 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wide text-yellow-600">{skuProduct.categoryName || 'Uncategorized'}</p>
+                        <h4 className="text-lg font-bold text-gray-900">{skuProduct.name || 'Unnamed product'}</h4>
+                        {skuProduct.brand && <p className="text-sm text-gray-500">{skuProduct.brand}</p>}
+                        <div className="mt-3 flex items-center gap-2 text-sm">
+                          <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
+                          {skuProduct.catalog ? (
+                            <span className="font-semibold text-gray-700">Catalog: {skuProduct.catalog.name}</span>
+                          ) : (
+                            <span className="text-gray-400">No catalog PDF on file for this product</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">No shop product found with SKU "{skuSearched}".</p>
+                  )}
+                </div>
+              )}
 
               {/* Search Results */}
               {searchResults.length > 0 && (
