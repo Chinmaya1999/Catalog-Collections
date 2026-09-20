@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check } from 'lucide-react';
-import { API_ENDPOINTS, getImageUrl } from '../config/api';
+import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check, BookOpen } from 'lucide-react';
+import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 import SEO from '../components/SEO';
 import { swatchColor } from '../utils/colorSwatch';
 
@@ -166,6 +166,18 @@ const ProductDetail = () => {
               <h1 className="text-3xl font-display font-bold text-brand-dark mb-3">{product.name || 'Unnamed product'}</h1>
               {product.material && (
                 <p className="text-sm text-gray-500 mb-4">Material: <span className="text-gray-700 font-medium">{product.material}</span></p>
+              )}
+
+              {product.vendorCatalogId?.pdfFile && (
+                <a
+                  href={getPdfUrl(product.vendorCatalogId.pdfFile)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline mb-4"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  View full catalog: {product.vendorCatalogId.name}
+                </a>
               )}
 
               <div className="flex items-baseline gap-3 mb-6">

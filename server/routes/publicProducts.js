@@ -138,7 +138,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, isPublished: true })
-      .select('-source.rawAiJson -attributes');
+      .select('-source.rawAiJson -attributes')
+      .populate('vendorCatalogId', 'name pdfFile');
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
     const productCategoryIds = product.categories && product.categories.length > 0
