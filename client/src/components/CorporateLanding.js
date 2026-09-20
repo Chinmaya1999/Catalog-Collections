@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -11,9 +11,20 @@ import {
   ShieldCheck,
   Sparkles,
   Truck,
+  Volume2,
+  VolumeX,
   Zap,
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
+
+const brandVideos = [
+  { src: '/uploads/video/20260920_065151_0_UTC_0.mp4', label: 'Behind the scenes' },
+  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_.mp4', label: 'Blank to branded' },
+  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-2.mp4', label: 'Precision printing' },
+  { src: '/uploads/video/PixVerse_V6_Image_Text_540P_Premium_corporate_-3.mp4', label: 'Packed and delivered' },
+].map((video) => ({ ...video, src: getImageUrl(video.src) }));
+
+const brandVideoPoster = getImageUrl(`/uploads/video/${encodeURIComponent('ChatGPT Image Sep 20, 2026 at 12_34_56 PM.png')}`);
 
 const productLines = [
   {
@@ -106,6 +117,21 @@ const motionProps = {
 
 const CorporateLanding = () => {
   const [allProducts, setAllProducts] = useState(featuredProducts);
+  const [activeVideo, setActiveVideo] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef(null);
+
+  const handleVideoEnded = () => {
+    setActiveVideo((index) => (index + 1) % brandVideos.length);
+  };
+
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    videoEl.src = brandVideos[activeVideo].src;
+    videoEl.load();
+    videoEl.play().catch(() => {});
+  }, [activeVideo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +213,57 @@ const CorporateLanding = () => {
           <div className="absolute -bottom-5 -left-4 flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#171717] shadow-xl sm:-left-8">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-yellow"><Palette className="h-5 w-5" /></div>
             <div><p className="text-sm font-bold">Made your way</p><p className="text-xs text-gray-500">Print · engrave · embroider</p></div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+
+    <section className="relative overflow-hidden bg-[#0c0c0c] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <motion.div {...motionProps} className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-yellow">See it in action</p>
+            <h2 className="mt-3 text-4xl font-display font-bold leading-tight sm:text-5xl">This is what we actually do.</h2>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-white/60">From a blank product to a finished, branded piece, printed, engraved and packed, ready for your team.</p>
+        </motion.div>
+
+        <motion.div {...motionProps} transition={{ duration: 0.65, delay: 0.1 }} className="relative overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
+          <div className="relative aspect-video w-full">
+            <video
+              ref={videoRef}
+              className="h-full w-full object-cover"
+              poster={brandVideoPoster}
+              autoPlay
+              muted={isMuted}
+              playsInline
+              onEnded={handleVideoEnded}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-5 sm:p-8">
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand-yellow">{brandVideos[activeVideo].label}</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex gap-2">
+                  {brandVideos.map((video, index) => (
+                    <button
+                      key={video.src}
+                      type="button"
+                      onClick={() => setActiveVideo(index)}
+                      aria-label={`Play ${video.label}`}
+                      className={`h-1.5 rounded-full transition-all ${index === activeVideo ? 'w-8 bg-brand-yellow' : 'w-4 bg-white/30 hover:bg-white/50'}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMuted((muted) => !muted)}
+                  aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur transition hover:bg-white/20"
+                >
+                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
