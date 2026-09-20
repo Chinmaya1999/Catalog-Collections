@@ -46,7 +46,24 @@ const ProductManagementTab = () => {
 
   const getPrimaryImage = (product) => product.images?.find(image => image.isPrimary) || product.images?.[0];
   const getSkus = (product) => (product.variants || []).map(variant => variant.sku).filter(Boolean);
-  const getCatalog = (product) => (product.source?.jobId && typeof product.source.jobId === 'object' ? product.source.jobId : null);
+
+  // Two independent ways a product can be linked to a catalog PDF:
+  // - source.jobId: the internal PDF-extraction job it was reviewed from (has a
+  //   pageNumber, so the viewer can jump straight to that product's page).
+  // - vendorCatalogId: the vendor-facing Catalog whose name matches this product's
+  //   brand (no page-level mapping available, so it opens at page 1).
+  // Extraction-job products are preferred when both exist, since they're page-accurate.
+  const getCatalog = (product) => {
+    const job = product.source?.jobId;
+    if (job && typeof job === 'object') {
+      return { name: job.originalName, filePath: job.filePath, page: product.source?.pageNumber || 1 };
+    }
+    const vendorCatalog = product.vendorCatalogId;
+    if (vendorCatalog && typeof vendorCatalog === 'object') {
+      return { name: vendorCatalog.name, filePath: vendorCatalog.pdfFile, page: 1 };
+    }
+    return null;
+  };
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -67,8 +84,8 @@ const ProductManagementTab = () => {
     if (!catalog?.filePath) return;
     setPdfViewer({
       url: getPdfUrl(catalog.filePath),
-      page: product.source?.pageNumber || 1,
-      name: catalog.originalName
+      page: catalog.page,
+      name: catalog.name
     });
   };
 
@@ -270,11 +287,11 @@ const ProductManagementTab = () => {
                     <button
                       type="button"
                       onClick={() => openCatalogPage(product)}
-                      title={`Open "${catalog.originalName}" at page ${product.source?.pageNumber || 1}`}
+                      title={`Open "${catalog.name}" at page ${catalog.page}`}
                       className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                     >
                       <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">View in catalog: {catalog.originalName}</span>
+                      <span className="truncate">View in catalog: {catalog.name}</span>
                     </button>
                   )}
                   <p className="mt-2 line-clamp-2 text-sm text-gray-500">{product.description || 'No description'}</p>

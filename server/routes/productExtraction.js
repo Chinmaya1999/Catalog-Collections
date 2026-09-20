@@ -214,7 +214,8 @@ router.get('/products', async (req, res) => {
     if (req.query.jobId) filter['source.jobId'] = req.query.jobId;
     const products = await Product.find(filter)
       .sort({ 'source.pageNumber': 1 })
-      .populate('source.jobId', 'originalName status createdAt filePath');
+      .populate('source.jobId', 'originalName status createdAt filePath')
+      .populate('vendorCatalogId', 'name pdfFile');
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching products' });
@@ -269,6 +270,7 @@ router.put('/products/:id', async (req, res) => {
 
     await product.save();
     await product.populate('source.jobId', 'originalName status createdAt filePath');
+    await product.populate('vendorCatalogId', 'name pdfFile');
     res.json(product);
   } catch (error) {
     console.error('Error updating product:', error);
@@ -292,6 +294,7 @@ router.post('/products/:id/images', upload.array('images', 12), async (req, res)
     });
     await product.save();
     await product.populate('source.jobId', 'originalName status createdAt filePath');
+    await product.populate('vendorCatalogId', 'name pdfFile');
     res.json(product);
   } catch (error) {
     console.error('Error uploading product image:', error);

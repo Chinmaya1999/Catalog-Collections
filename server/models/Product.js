@@ -50,6 +50,11 @@ const productSchema = new mongoose.Schema({
     rawAiJson: { type: mongoose.Schema.Types.Mixed },
     confidence: { type: Number, default: null }
   },
+  // The vendor-facing PDF catalog (Catalog model) whose name matches this product's
+  // brand - separate from source.jobId (the internal PDF-extraction job this product
+  // was reviewed from, which most products predate and never had). Lets "Shop Product
+  // Management" link a product straight to the matching vendor catalog PDF.
+  vendorCatalogId: { type: mongoose.Schema.Types.ObjectId, ref: 'Catalog', default: null },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
