@@ -1,12 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Edit, ImagePlus, Loader2, PackageSearch, Save, Search, Trash2, X } from 'lucide-react';
-import { API_ENDPOINTS, getImageUrl } from '../../config/api';
-
-const formatDate = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-};
+import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../../config/api';
+import PDFViewer from '../../components/PDFViewer';
 
 const emptyForm = {
   name: '',
@@ -30,9 +25,7 @@ const ProductManagementTab = () => {
   const [form, setForm] = useState(emptyForm);
   const [selectedImageFiles, setSelectedImageFiles] = useState([]);
   const [search, setSearch] = useState('');
-  const [catalogFilter, setCatalogFilter] = useState(null);
-  const [viewingCatalog, setViewingCatalog] = useState(null);
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [pdfViewer, setPdfViewer] = useState(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -57,9 +50,8 @@ const ProductManagementTab = () => {
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
+    if (!query) return products;
     return products.filter(product => {
-      if (catalogFilter && getCatalog(product)?._id !== catalogFilter) return false;
-      if (!query) return true;
       const haystacks = [
         product.name,
         product.brand,
@@ -68,34 +60,17 @@ const ProductManagementTab = () => {
       ];
       return haystacks.some(value => (value || '').toLowerCase().includes(query));
     });
-  }, [products, search, catalogFilter]);
+  }, [products, search]);
 
-  const openCatalog = async (jobId) => {
-    setLoadingCatalog(true);
-    setViewingCatalog({ _id: jobId });
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_ENDPOINTS.productExtraction}/jobs/${jobId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.ok) setViewingCatalog(await response.json());
-      else setViewingCatalog(null);
-    } catch (error) {
-      console.error('Error fetching catalog:', error);
-      setViewingCatalog(null);
-    } finally {
-      setLoadingCatalog(false);
-    }
+  const openCatalogPage = (product) => {
+    const catalog = getCatalog(product);
+    if (!catalog?.filePath) return;
+    setPdfViewer({
+      url: getPdfUrl(catalog.filePath),
+      page: product.source?.pageNumber || 1,
+      name: catalog.originalName
+    });
   };
-
-  const showOnlyThisCatalog = () => {
-    setCatalogFilter(viewingCatalog._id);
-    setViewingCatalog(null);
-  };
-
-  const activeCatalogName = catalogFilter
-    ? products.find(product => getCatalog(product)?._id === catalogFilter)?.source?.jobId?.originalName
-    : null;
 
   const startEditing = (product) => {
     const primaryImage = getPrimaryImage(product);
@@ -273,18 +248,6 @@ const ProductManagementTab = () => {
         )}
       </div>
 
-      {catalogFilter && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 font-semibold text-blue-700">
-            <BookOpen className="h-3.5 w-3.5" />
-            Catalog: {activeCatalogName || 'Unknown'}
-            <button type="button" onClick={() => setCatalogFilter(null)} aria-label="Clear catalog filter" className="ml-1 text-blue-500 hover:text-blue-800">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </span>
-        </div>
-      )}
-
       {filteredProducts.length === 0 ? (
         <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{search ? `No products match "${search}".` : 'No products found.'}</p></div>
       ) : (
@@ -306,10 +269,12 @@ const ProductManagementTab = () => {
                   {catalog && (
                     <button
                       type="button"
-                      onClick={() => openCatalog(catalog._id)}
-                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                      onClick={() => openCatalogPage(product)}
+                      title={`Open "${catalog.originalName}" at page ${product.source?.pageNumber || 1}`}
+                      className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                     >
-                      <BookOpen className="h-3 w-3" /> {catalog.originalName}
+                      <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">View in catalog: {catalog.originalName}</span>
                     </button>
                   )}
                   <p className="mt-2 line-clamp-2 text-sm text-gray-500">{product.description || 'No description'}</p>
@@ -343,45 +308,13 @@ const ProductManagementTab = () => {
         </div>
       )}
 
-      {viewingCatalog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600"><BookOpen className="h-5 w-5" /></div>
-                <h3 className="text-xl font-bold text-gray-900">Catalog details</h3>
-              </div>
-              <button type="button" onClick={() => setViewingCatalog(null)} className="rounded-lg p-2 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5" /></button>
-            </div>
-
-            {loadingCatalog ? (
-              <div className="py-8 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-yellow-500" /></div>
-            ) : !viewingCatalog.originalName ? (
-              <p className="text-sm text-gray-500">This catalog could not be found — it may have been deleted.</p>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-lg font-bold text-gray-900 break-words">{viewingCatalog.originalName}</p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Uploaded {formatDate(viewingCatalog.createdAt) || 'date unknown'} · Status: {viewingCatalog.status || 'unknown'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-3 rounded-xl bg-gray-50 p-4 text-center">
-                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.totalPages ?? '–'}</p><p className="text-[11px] text-gray-500">Pages</p></div>
-                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.productsFound ?? '–'}</p><p className="text-[11px] text-gray-500">Products found</p></div>
-                  <div><p className="text-lg font-bold text-gray-900">{viewingCatalog.imagesFound ?? '–'}</p><p className="text-[11px] text-gray-500">Images</p></div>
-                </div>
-                <button
-                  type="button"
-                  onClick={showOnlyThisCatalog}
-                  className="w-full rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-gray-900 hover:bg-yellow-500"
-                >
-                  Show only products from this catalog
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {pdfViewer && (
+        <PDFViewer
+          pdfUrl={pdfViewer.url}
+          initialPage={pdfViewer.page}
+          catalog={{ name: pdfViewer.name }}
+          onClose={() => setPdfViewer(null)}
+        />
       )}
     </div>
   );

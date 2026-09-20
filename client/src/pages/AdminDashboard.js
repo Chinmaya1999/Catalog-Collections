@@ -142,8 +142,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleVendorSearch = async (e) => {
-    e.preventDefault();
+  const performVendorSearch = async () => {
     setSearching(true);
     setSearchResults([]);
     setSkuProduct(null);
@@ -204,6 +203,30 @@ const AdminDashboard = () => {
       setSearching(false);
     }
   };
+
+  const handleVendorSearch = (e) => {
+    e.preventDefault();
+    performVendorSearch();
+  };
+
+  // Auto-search as soon as a product code / SKU is typed, so the admin doesn't have to
+  // click "Search Vendors" for the common case of just looking up one code. Debounced so
+  // it fires once typing pauses rather than on every keystroke; clicking the button still
+  // works too (e.g. to re-run the search after changing the other filter fields).
+  useEffect(() => {
+    const code = vendorSearch.productCode.trim();
+    if (!code) {
+      setSearchResults([]);
+      setSkuProduct(null);
+      setSkuSearched('');
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      performVendorSearch();
+    }, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorSearch.productCode]);
 
   const handleViewProductPage = async (catalogId, productCode) => {
     try {
