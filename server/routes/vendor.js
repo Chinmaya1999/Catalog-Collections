@@ -116,11 +116,21 @@ router.get('/product-lookup/:code', async (req, res) => {
 
     const [product, vendors] = await Promise.all([
       Product.findOne({ 'variants.sku': exact })
-        .select('name brand categoryName images variants source')
-        .populate('source.jobId', 'originalName'),
+        .select('name brand categoryName images variants source vendorCatalogId')
+        .populate('source.jobId', 'originalName')
+        .populate('vendorCatalogId', 'name'),
       Vendor.find({ $or: [{ productCode: exact }, { productCodes: exact }], active: true })
         .populate('catalogId', 'name categoryName pdfFile priceRange')
     ]);
+
+    // The internal PDF-extraction job (page-accurate) is preferred when present, falling
+    // back to the vendor Catalog matched by brand name (see link-products-to-vendor-catalogs.js).
+    let catalog = null;
+    if (product?.source?.jobId) {
+      catalog = { _id: product.source.jobId._id, name: product.source.jobId.originalName };
+    } else if (product?.vendorCatalogId) {
+      catalog = { _id: product.vendorCatalogId._id, name: product.vendorCatalogId.name };
+    }
 
     res.json({
       product: product ? {
@@ -129,9 +139,7 @@ router.get('/product-lookup/:code', async (req, res) => {
         brand: product.brand,
         categoryName: product.categoryName,
         images: product.images,
-        catalog: product.source?.jobId
-          ? { _id: product.source.jobId._id, name: product.source.jobId.originalName }
-          : null
+        catalog
       } : null,
       vendors
     });
