@@ -198,4 +198,58 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Paginated version of the "related products" section on the product detail page, so the
+// (fixed 4-item) `related` array embedded above can be replaced with an infinite-scroll grid
+// without re-fetching the product itself on every page. Relevance is expressed as a numeric
+// score (same-category matches outrank same-brand/material-only matches) computed in the
+// aggregation itself, so paging through results doesn't reshuffle or duplicate items the way
+// running two separate tiered queries page-by-page would.
+router.get('/:id/related', async (req, res) => {
+  try {
+    const product = await Product.findOne({ _id: req.params.id, isPublished: true })
+      .select('categories category brand material');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const productCategoryIds = product.categories && product.categories.length > 0
+      ? product.categories
+      : [product.category].filter(Boolean);
+
+    // Strictly same-category when the product has one - "You may also like" on a t-shirt should
+    // page through other t-shirts, not drift into unrelated same-brand products from a totally
+    // different category once the category matches run out. Brand/material is a fallback only
+    // for the rare product with no category assigned at all.
+    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 40);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+
+    let matchOr;
+    if (productCategoryIds.length > 0) {
+      matchOr = [{ category: { $in: productCategoryIds } }, { categories: { $in: productCategoryIds } }];
+    } else {
+      matchOr = [];
+      if (product.brand) matchOr.push({ brand: product.brand });
+      if (product.material) matchOr.push({ material: product.material });
+    }
+
+    if (matchOr.length === 0) {
+      return res.json({ products: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+    }
+
+    const baseMatch = { isPublished: true, _id: { $ne: product._id }, $or: matchOr };
+
+    const [products, total] = await Promise.all([
+      Product.find(baseMatch)
+        .select('-source.rawAiJson -attributes')
+        .sort({ publishedAt: -1, _id: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Product.countDocuments(baseMatch)
+    ]);
+
+    res.json({ products, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  } catch (error) {
+    console.error('Error fetching related products:', error);
+    res.status(500).json({ message: 'Error fetching related products' });
+  }
+});
+
 module.exports = router;

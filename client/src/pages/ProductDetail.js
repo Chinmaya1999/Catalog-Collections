@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check, BookOpen } from 'lucide-react';
+import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check, BookOpen, Loader2 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
 import SEO from '../components/SEO';
 import { swatchColor } from '../utils/colorSwatch';
@@ -41,11 +41,18 @@ const ProductDetail = () => {
     else navigate('/shop');
   };
   const [product, setProduct] = useState(null);
-  const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
+
+  // "You may also like" is fetched separately (not embedded in the product response) so it can
+  // page independently via infinite scroll instead of being capped at a fixed handful of items.
+  const [related, setRelated] = useState([]);
+  const [relatedPage, setRelatedPage] = useState(1);
+  const [relatedPagination, setRelatedPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [relatedLoadingMore, setRelatedLoadingMore] = useState(false);
+  const relatedSentinelRef = useRef(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -55,7 +62,6 @@ const ProductDetail = () => {
         if (res.ok) {
           const data = await res.json();
           setProduct(data.product);
-          setRelated(data.related || []);
           setSelectedImage(0);
           setSelectedVariantIdx(0);
           setSelectedColorIdx(0);
@@ -69,7 +75,48 @@ const ProductDetail = () => {
       }
     };
     fetchProduct();
+    // Reset the related-products grid for the new product before its first page loads.
+    setRelated([]);
+    setRelatedPage(1);
+    setRelatedPagination({ page: 1, totalPages: 1, total: 0 });
   }, [id]);
+
+  const fetchRelated = useCallback(async (pageNum, replace) => {
+    setRelatedLoadingMore(true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.products}/${id}/related?page=${pageNum}&limit=12`);
+      if (res.ok) {
+        const data = await res.json();
+        setRelated((prev) => (replace ? data.products : [...prev, ...data.products]));
+        setRelatedPagination(data.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching related products:', error);
+    } finally {
+      setRelatedLoadingMore(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchRelated(1, true);
+  }, [fetchRelated]);
+
+  useEffect(() => {
+    const el = relatedSentinelRef.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !relatedLoadingMore && relatedPage < relatedPagination.totalPages) {
+          const next = relatedPage + 1;
+          setRelatedPage(next);
+          fetchRelated(next, false);
+        }
+      },
+      { rootMargin: '400px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [relatedLoadingMore, relatedPage, relatedPagination.totalPages, fetchRelated]);
 
   if (loading) {
     return (
@@ -328,6 +375,23 @@ const ProductDetail = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
               {related.map((p) => <RelatedCard key={p._id} product={p} />)}
             </div>
+
+            {/* Infinite scroll sentinel - loads more related products as the user scrolls,
+                instead of stopping at a fixed handful. */}
+            <div ref={relatedSentinelRef} className="h-px w-full" aria-hidden="true" />
+
+            {relatedLoadingMore && (
+              <div className="flex items-center justify-center gap-2 py-6 text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm font-medium">Loading more...</span>
+              </div>
+            )}
+
+            {!relatedLoadingMore && relatedPage >= relatedPagination.totalPages && related.length > 4 && (
+              <p className="text-center text-xs text-gray-400 py-6">
+                That's all {relatedPagination.total} related products.
+              </p>
+            )}
           </div>
         )}
       </div>
