@@ -160,16 +160,36 @@ router.get('/:id', async (req, res) => {
     const productCategoryIds = product.categories && product.categories.length > 0
       ? product.categories
       : [product.category].filter(Boolean);
-    const related = await Product.find({
-      isPublished: true,
-      _id: { $ne: product._id },
-      $or: [
-        { category: { $in: productCategoryIds } },
-        { categories: { $in: productCategoryIds } },
-        { brand: product.brand },
-        { material: product.material }
-      ]
-    }).select('-source.rawAiJson -attributes').limit(4);
+    const baseFilter = { isPublished: true, _id: { $ne: product._id } };
+
+    // Same-category matches first (most relevant), then top up with brand/material matches only
+    // if needed. Querying everything in one $or with no relevance ordering let unrelated products
+    // crowd out same-category ones whenever brand/material happened to be null on both sides -
+    // `{ material: null }` matches every other product with no material set, which is most of the
+    // catalog, so a null-material product could get "related" results with nothing in common.
+    let related = [];
+    if (productCategoryIds.length > 0) {
+      related = await Product.find({
+        ...baseFilter,
+        $or: [{ category: { $in: productCategoryIds } }, { categories: { $in: productCategoryIds } }]
+      }).select('-source.rawAiJson -attributes').limit(4);
+    }
+
+    if (related.length < 4) {
+      const fallbackOr = [];
+      if (product.brand) fallbackOr.push({ brand: product.brand });
+      if (product.material) fallbackOr.push({ material: product.material });
+
+      if (fallbackOr.length > 0) {
+        const excludeIds = [product._id, ...related.map((r) => r._id)];
+        const fallback = await Product.find({
+          ...baseFilter,
+          _id: { $nin: excludeIds },
+          $or: fallbackOr
+        }).select('-source.rawAiJson -attributes').limit(4 - related.length);
+        related = related.concat(fallback);
+      }
+    }
 
     res.json({ product, related });
   } catch (error) {
