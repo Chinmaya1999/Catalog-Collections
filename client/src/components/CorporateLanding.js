@@ -16,6 +16,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
+import { categoryImage } from '../utils/categoryImages';
 
 const IMAGE_SLIDE_DURATION = 5000;
 
@@ -130,6 +131,7 @@ const motionProps = {
 
 const CorporateLanding = () => {
   const [allProducts, setAllProducts] = useState(featuredProducts);
+  const [categories, setCategories] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [iconOffset, setIconOffset] = useState(0);
@@ -187,6 +189,9 @@ const CorporateLanding = () => {
           .filter(Boolean);
 
         if (!cancelled && products.length > 0) setAllProducts(products);
+        // Reuses this same request's category facet rather than firing a second network call
+        // just to populate the Home page's category marquee.
+        if (!cancelled && (data.filters?.categories?.length || 0) > 0) setCategories(data.filters.categories);
       } catch (error) {
         // Keep the local products when the public product service is unavailable.
       }
@@ -195,6 +200,11 @@ const CorporateLanding = () => {
     loadProducts();
     return () => { cancelled = true; };
   }, []);
+
+  // Split into two roughly-even rows for the opposite-direction marquee below.
+  const categoryHalf = Math.ceil(categories.length / 2);
+  const categoryRow1 = categories.slice(0, categoryHalf);
+  const categoryRow2 = categories.slice(categoryHalf);
 
   return (
   <div className="overflow-hidden bg-white text-[#171717]">
@@ -360,6 +370,70 @@ const CorporateLanding = () => {
         </div>
       </div>
     </section>
+
+    {categories.length > 0 && (
+      <section className="overflow-hidden bg-[#fafafa] py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div {...motionProps}>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-gold">Shop by category</p>
+            <h2 className="mt-3 text-4xl font-display font-bold leading-tight sm:text-5xl">Find it faster.</h2>
+          </motion.div>
+        </div>
+
+        {/* Row 1 scrolls right-to-left, row 2 scrolls the opposite way - the mismatch keeps
+            it feeling alive rather than like one static block, and hovering either row
+            pauses it (see .animate-scroll-left/-right in index.css) so it's easy to click. */}
+        <div className="relative mt-10 overflow-hidden">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#fafafa] to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#fafafa] to-transparent" />
+          <div
+            className="flex w-max animate-scroll-left gap-4 px-4"
+            style={{ animationDuration: `${Math.max(categoryRow1.length * 4, 20)}s` }}
+          >
+            {[...categoryRow1, ...categoryRow1].map((c, index) => (
+              <Link
+                key={`${c.id}-${index}`}
+                to={`/shop?category=${c.id}`}
+                className="group relative aspect-[4/5] w-36 shrink-0 overflow-hidden rounded-2xl shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-48"
+              >
+                <img src={categoryImage(c.name)} alt={c.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-3">
+                  <p className="text-sm font-bold text-white leading-tight line-clamp-2">{c.name}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-white/70">{c.count} items</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {categoryRow2.length > 0 && (
+          <div className="relative mt-4 overflow-hidden">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#fafafa] to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#fafafa] to-transparent" />
+            <div
+              className="flex w-max animate-scroll-right gap-4 px-4"
+              style={{ animationDuration: `${Math.max(categoryRow2.length * 4, 20)}s` }}
+            >
+              {[...categoryRow2, ...categoryRow2].map((c, index) => (
+                <Link
+                  key={`${c.id}-${index}`}
+                  to={`/shop?category=${c.id}`}
+                  className="group relative aspect-[4/5] w-36 shrink-0 overflow-hidden rounded-2xl shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-48"
+                >
+                  <img src={categoryImage(c.name)} alt={c.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-3">
+                    <p className="text-sm font-bold text-white leading-tight line-clamp-2">{c.name}</p>
+                    <p className="mt-0.5 text-[11px] font-medium text-white/70">{c.count} items</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    )}
 
     <section className="bg-white">
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">

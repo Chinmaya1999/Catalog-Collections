@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   X,
   PackageSearch,
   SlidersHorizontal,
-  ChevronLeft,
-  ChevronRight,
   Heart,
   ArrowUpDown,
   ArrowRight,
@@ -16,6 +14,7 @@ import {
   Sparkles,
   Check,
   Calculator,
+  Loader2,
 } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../config/api';
 import SEO from '../components/SEO';
@@ -38,22 +37,12 @@ const isNewProduct = (publishedAt) => {
   return ageMs >= 0 && ageMs < 14 * 24 * 60 * 60 * 1000;
 };
 
-// Windowed page list with ellipses, e.g. 1 ... 4 5 [6] 7 8 ... 24, so pagination stays
-// usable (and doesn't wrap ugly) even with a couple hundred products behind it.
-const getPageNumbers = (current, total) => {
-  const delta = 1;
-  const pages = [];
-  const range = [];
-  for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
-    range.push(i);
-  }
-  if (current - delta > 2) pages.push(1, '…');
-  else pages.push(1);
-  pages.push(...range);
-  if (current + delta < total - 1) pages.push('…', total);
-  else if (total > 1) pages.push(total);
-  return pages;
-};
+const PRICE_PRESETS = [
+  { label: 'Under ₹500', min: '', max: '500' },
+  { label: '₹500 – ₹1,000', min: '500', max: '1000' },
+  { label: '₹1,000 – ₹2,500', min: '1000', max: '2500' },
+  { label: '₹2,500+', min: '2500', max: '' }
+];
 
 const ProductCard = ({ product, saved, onToggleSave }) => {
   const primary = product.images?.find((i) => i.isPrimary) || product.images?.[0];
@@ -194,10 +183,27 @@ const FilterSections = ({
       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
         Price range {filterOptions.priceRange.max > 0 && <span className="normal-case font-normal text-gray-400">(₹{filterOptions.priceRange.min} – ₹{filterOptions.priceRange.max})</span>}
       </h3>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-2.5">
         <input type="number" min="0" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
         <span className="text-gray-400">–</span>
         <input type="number" min="0" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-brand-yellow outline-none" />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {PRICE_PRESETS.map((p) => {
+          const active = minPrice === p.min && maxPrice === p.max;
+          return (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => { setMinPrice(active ? '' : p.min); setMaxPrice(active ? '' : p.max); }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                active ? 'bg-brand-dark text-white border-brand-dark' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-yellow'
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
       </div>
     </div>
 
@@ -225,52 +231,120 @@ const Shop = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [savedModalOpen, setSavedModalOpen] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [sort, setSort] = useState('newest');
+  // Every filter is seeded from the URL and kept in sync with it (see the sync effect below).
+  // Without this, clicking into a product and hitting the browser's Back button remounts Shop
+  // from scratch with no way to recover the filters that were active - React state alone
+  // doesn't survive that round trip, only the URL does.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const initialMinPrice = searchParams.get('minPrice') || '';
+  const initialMaxPrice = searchParams.get('maxPrice') || '';
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  const [brand, setBrand] = useState(() => searchParams.get('brand') || '');
+  const [category, setCategory] = useState(() => searchParams.get('category') || '');
+  const [minPrice, setMinPrice] = useState(initialMinPrice);
+  const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
+  const [debouncedMinPrice, setDebouncedMinPrice] = useState(initialMinPrice);
+  const [debouncedMaxPrice, setDebouncedMaxPrice] = useState(initialMaxPrice);
+  const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest');
   const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const { savedIds, toggleSaved } = useSavedProducts();
   const topRef = useRef(null);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, category, brand, minPrice, maxPrice, sort]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMinPrice(minPrice), 400);
+    return () => clearTimeout(t);
+  }, [minPrice]);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedMaxPrice(maxPrice), 400);
+    return () => clearTimeout(t);
+  }, [maxPrice]);
+
+  // pageNum/replace are explicit args (not the `page` state) so the very next infinite-scroll
+  // page can be requested immediately after bumping `page`, without waiting on a re-render.
+  const fetchProducts = useCallback(async (pageNum, replace) => {
+    if (replace) setLoading(true); else setLoadingMore(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (category) params.set('category', category);
       if (brand) params.set('brand', brand);
-      if (minPrice) params.set('minPrice', minPrice);
-      if (maxPrice) params.set('maxPrice', maxPrice);
+      if (debouncedMinPrice) params.set('minPrice', debouncedMinPrice);
+      if (debouncedMaxPrice) params.set('maxPrice', debouncedMaxPrice);
       params.set('sort', sort);
-      params.set('page', page);
+      params.set('page', pageNum);
 
       const res = await fetch(`${API_ENDPOINTS.products}?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setProducts(data.products);
+        setProducts((prev) => (replace ? data.products : [...prev, ...data.products]));
         setPagination(data.pagination);
         setFilterOptions(data.filters);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
-      setLoading(false);
+      if (replace) setLoading(false); else setLoadingMore(false);
     }
-  }, [debouncedSearch, category, brand, minPrice, maxPrice, sort, page]);
+  }, [debouncedSearch, category, brand, debouncedMinPrice, debouncedMaxPrice, sort]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  // Any filter/search/sort change starts a fresh list from page 1 - this is the only place
+  // that replaces `products` outright; scrolling further only ever appends (see the
+  // IntersectionObserver effect below). The mount-run is skipped so landing on /shop doesn't
+  // yank the page down to the grid before the user has done anything.
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    setPage(1);
+    fetchProducts(1, true);
+    if (didMountRef.current) {
+      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    didMountRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, category, brand, debouncedMinPrice, debouncedMaxPrice, sort]);
+
+  // Mirrors the same filters into the URL (replacing, not pushing, so tweaking filters
+  // doesn't spam the browser history) so that Back after opening a product restores them
+  // instead of landing on a blank /shop.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (debouncedSearch) next.set('search', debouncedSearch);
+    if (category) next.set('category', category);
+    if (brand) next.set('brand', brand);
+    if (debouncedMinPrice) next.set('minPrice', debouncedMinPrice);
+    if (debouncedMaxPrice) next.set('maxPrice', debouncedMaxPrice);
+    if (sort !== 'newest') next.set('sort', sort);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, category, brand, debouncedMinPrice, debouncedMaxPrice, sort]);
+
+  // Infinite scroll: load the next page once the sentinel below the grid enters the viewport.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && !loadingMore && page < pagination.totalPages) {
+          const next = page + 1;
+          setPage(next);
+          fetchProducts(next, false);
+        }
+      },
+      { rootMargin: '600px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, page, pagination.totalPages, fetchProducts]);
 
   const activeFilterCount = (category ? 1 : 0) + (brand ? 1 : 0) + (minPrice || maxPrice ? 1 : 0);
   const clearFilters = () => { setCategory(''); setBrand(''); setMinPrice(''); setMaxPrice(''); };
@@ -291,11 +365,6 @@ const Shop = () => {
     }
     return chips;
   }, [category, brand, minPrice, maxPrice, filterOptions]);
-
-  const goToPage = (p) => {
-    setPage(p);
-    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
 
   const filterSectionProps = { filterOptions, category, setCategory, brand, setBrand, minPrice, setMinPrice, maxPrice, setMaxPrice };
 
@@ -334,26 +403,6 @@ const Shop = () => {
               )}
             </div>
           </div>
-
-          {filterOptions.categories.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-6 max-w-3xl mx-auto justify-center sm:flex-wrap">
-              <button
-                onClick={() => setCategory('')}
-                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${!category ? 'bg-gray-900 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                All
-              </button>
-              {filterOptions.categories.slice(0, 8).map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCategory(category === c.id ? '' : c.id)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${category === c.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
@@ -501,40 +550,21 @@ const Shop = () => {
                   </AnimatePresence>
                 </motion.div>
 
-                {pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
-                    <button
-                      onClick={() => goToPage(Math.max(1, page - 1))}
-                      disabled={page <= 1}
-                      className="p-2 rounded-lg border border-gray-200 bg-white hover:border-brand-yellow disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    {getPageNumbers(pagination.page, pagination.totalPages).map((p, i) =>
-                      p === '…' ? (
-                        <span key={`dots-${i}`} className="px-2 text-sm text-gray-400">…</span>
-                      ) : (
-                        <button
-                          key={p}
-                          onClick={() => goToPage(p)}
-                          className={`min-w-[36px] h-9 px-2 rounded-lg text-sm font-semibold transition-colors ${
-                            p === pagination.page ? 'bg-gray-900 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-yellow'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      )
-                    )}
-                    <button
-                      onClick={() => goToPage(Math.min(pagination.totalPages, page + 1))}
-                      disabled={page >= pagination.totalPages}
-                      className="p-2 rounded-lg border border-gray-200 bg-white hover:border-brand-yellow disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Next page"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                {/* Infinite scroll sentinel - the IntersectionObserver above fires the next
+                    page fetch once this enters the viewport, so the grid just keeps growing. */}
+                <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
+
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm font-medium">Loading more products…</span>
                   </div>
+                )}
+
+                {!loadingMore && page >= pagination.totalPages && products.length > 0 && (
+                  <p className="text-center text-xs text-gray-400 py-8">
+                    You've reached the end — {pagination.total} {pagination.total === 1 ? 'product' : 'products'} shown.
+                  </p>
                 )}
               </>
             )}

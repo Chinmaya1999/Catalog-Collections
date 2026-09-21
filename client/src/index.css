@@ -64,8 +64,28 @@
   animation-play-state: paused;
 }
 
+@keyframes scroll-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll-right {
+  animation-name: scroll-right;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.animate-scroll-right:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-scroll-left {
+  .animate-scroll-left,
+  .animate-scroll-right {
     animation-play-state: paused;
   }
 }

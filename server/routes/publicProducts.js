@@ -1,5 +1,6 @@
 const express = require('express');
 const Product = require('../models/Product');
+const Category = require('../models/Category');
 
 const router = express.Router();
 
@@ -31,7 +32,12 @@ router.get('/', async (req, res) => {
       const q = req.query.search.trim();
       if (q) {
         const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [{ name: re }, { brand: re }, { material: re }, { description: re }, { 'variants.sku': re }];
+        // Broadened so a search matches on category/color too (e.g. typing "storage" or
+        // "navy blue" surfaces relevant products even when the term isn't in the name).
+        filter.$or = [
+          { name: re }, { brand: re }, { material: re }, { description: re }, { 'variants.sku': re },
+          { categoryName: re }, { categoryNames: re }, { 'colors.name': re }
+        ];
       }
     }
     if (req.query.brand) filter.brand = req.query.brand;
@@ -64,7 +70,7 @@ router.get('/', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX);
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
 
-    const [products, total, facets] = await Promise.all([
+    const [products, total, facets, categoryDocs] = await Promise.all([
       Product.find(filter)
         .select('-source.rawAiJson -attributes')
         .sort(sort)
@@ -112,16 +118,25 @@ router.get('/', async (req, res) => {
             ]
           }
         }
-      ])
+      ]),
+      // Fetched unconditionally (not filtered by the facet's own category set) so every
+      // category card can show its icon even before any product-side filter narrows things.
+      Category.find().select('icon name')
     ]);
 
     const facetResult = facets[0] || { categories: [], brands: [], colors: [], priceRange: [] };
+    const iconById = new Map(categoryDocs.map((c) => [String(c._id), c.icon]));
 
     res.json({
       products,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       filters: {
-        categories: facetResult.categories.map(c => ({ id: c._id.id, name: c._id.name, count: c.count })),
+        categories: facetResult.categories.map(c => ({
+          id: c._id.id,
+          name: c._id.name,
+          count: c.count,
+          icon: iconById.get(String(c._id.id)) || '📦'
+        })),
         brands: facetResult.brands.map(b => ({ name: b._id, count: b.count })),
         colors: facetResult.colors.map(c => ({ name: c._id, count: c.count })),
         priceRange: facetResult.priceRange[0]

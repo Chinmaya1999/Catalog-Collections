@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Share2, Truck, Shield, RefreshCw, PackageSearch, Ruler, Weight, Box, MessageCircle, Check, BookOpen } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -30,6 +30,16 @@ const RelatedCard = ({ product }) => {
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  // A hardcoded `to="/shop"` link would always land on an unfiltered shop page, discarding
+  // whatever search/category/price filters were active. Going back in real browser history
+  // instead returns to that exact filtered URL. Falls back to a plain /shop navigation when
+  // there's no history to go back to (e.g. this product page was opened directly/shared).
+  const backToShop = (e) => {
+    e.preventDefault();
+    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    else navigate('/shop');
+  };
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +83,7 @@ const ProductDetail = () => {
     return (
       <div className="pt-20 min-h-screen flex flex-col items-center justify-center bg-brand-light gap-4">
         <p className="text-xl text-gray-600">Product not found</p>
-        <Link to="/shop" className="btn-primary inline-flex items-center">Back to Shop</Link>
+        <Link to="/shop" onClick={backToShop} className="btn-primary inline-flex items-center">Back to Shop</Link>
       </div>
     );
   }
@@ -122,7 +132,7 @@ const ProductDetail = () => {
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Link to="/shop" className="inline-flex items-center text-gray-600 hover:text-brand-gold transition-colors">
+          <Link to="/shop" onClick={backToShop} className="inline-flex items-center text-gray-600 hover:text-brand-gold transition-colors">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Shop
           </Link>
