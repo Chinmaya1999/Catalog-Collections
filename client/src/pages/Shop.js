@@ -157,7 +157,7 @@ const FilterPill = ({ active, onClick, children }) => (
       <span className={`shrink-0 w-4 h-4 rounded-full border flex items-center justify-center ${active ? 'bg-brand-yellow border-brand-yellow' : 'border-gray-300'}`}>
         {active && <Check className="w-2.5 h-2.5 text-brand-dark" />}
       </span>
-      <span className="truncate">{children}</span>
+      <span className="min-w-0 break-words">{children}</span>
     </span>
   </button>
 );
@@ -446,7 +446,7 @@ const Shop = () => {
       <section ref={topRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 scroll-mt-24">
         <div className="lg:flex lg:gap-8 lg:items-start">
           {/* Desktop sidebar */}
-          <aside className="hidden lg:block w-64 shrink-0 sticky top-24 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <aside className="hidden lg:block w-80 shrink-0 sticky top-24 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-gray-900">Filters</h2>
               {activeFilterCount > 0 && (
