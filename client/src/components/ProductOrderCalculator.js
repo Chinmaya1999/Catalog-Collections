@@ -153,32 +153,33 @@ const ProductOrderCalculator = () => {
   };
 
   return (
-    <div className="bg-white overflow-hidden rounded-3xl shadow-lg border border-gray-100">
-      <div className="bg-gradient-to-r from-brand-yellow to-brand-gold px-6 sm:px-8 py-6">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-white/40 flex items-center justify-center shrink-0">
+    <div className="bg-white overflow-hidden rounded-[2rem] shadow-lift ring-1 ring-black/5">
+      <div className="relative overflow-hidden bg-brand-dark px-6 sm:px-10 py-7">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand-yellow/25 blur-3xl" />
+        <div className="relative flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-brand-yellow flex items-center justify-center shrink-0">
             <Calculator className="w-6 h-6 text-brand-dark" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-display font-extrabold text-brand-dark">
+            <h2 className="text-xl sm:text-2xl font-display font-extrabold text-white">
               What do you want to order?
             </h2>
-            <p className="text-brand-dark/80 text-sm mt-0.5">
+            <p className="text-white/55 text-sm mt-0.5">
               Filter by category and price, pick a brand, choose your quantity — we'll work out your bulk discount instantly.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
         {/* Filters + quantity */}
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Category</label>
+            <label className="field-label">Category</label>
             <select
               value={calcCategory}
               onChange={(e) => setCalcCategory(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm"
+              className="input-field"
             >
               <option value="">All categories</option>
               {categoryOptions.map((c) => (
@@ -188,7 +189,7 @@ const ProductOrderCalculator = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Price range</label>
+            <label className="field-label">Price range</label>
             <div className="flex items-center gap-3">
               <input
                 type="number"
@@ -196,26 +197,26 @@ const ProductOrderCalculator = () => {
                 placeholder="Min"
                 value={calcMinPrice}
                 onChange={(e) => setCalcMinPrice(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm"
+                className="input-field"
               />
-              <span className="text-gray-400">–</span>
+              <span className="text-ink-300">—</span>
               <input
                 type="number"
                 min="0"
                 placeholder="Max"
                 value={calcMaxPrice}
                 onChange={(e) => setCalcMaxPrice(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm"
+                className="input-field"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="field-label">
               Select Brand ({brandOptions.length} match{brandOptions.length === 1 ? '' : 'es'})
             </label>
             {brandOptions.length === 0 ? (
-              <div className="flex items-center gap-2 text-gray-400 text-sm bg-gray-50 rounded-xl px-4 py-3 border border-dashed border-gray-200">
+              <div className="flex items-center gap-2 text-ink-400 text-sm bg-ink-50 rounded-2xl px-4 py-3 border border-dashed border-ink-200">
                 <PackageSearch className="w-4 h-4 shrink-0" />
                 {loadingProducts ? 'Loading brands…' : 'No brands match these filters'}
               </div>
@@ -223,7 +224,7 @@ const ProductOrderCalculator = () => {
               <select
                 value={calcBrand}
                 onChange={(e) => setCalcBrand(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm"
+                className="input-field"
               >
                 <option value="">Choose a brand...</option>
                 {brandOptions.map((b) => (
@@ -234,12 +235,12 @@ const ProductOrderCalculator = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity needed</label>
-            <div className="flex items-center gap-3">
+            <label className="field-label">Quantity needed</label>
+            <div className="inline-flex items-center gap-1 rounded-full bg-ink-100 p-1">
               <button
                 type="button"
                 onClick={() => adjustQuantity(-1)}
-                className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center text-brand-dark hover:bg-brand-dark hover:text-white transition-colors"
                 aria-label="Decrease quantity"
               >
                 <Minus className="w-4 h-4" />
@@ -249,12 +250,12 @@ const ProductOrderCalculator = () => {
                 min="1"
                 value={calcQuantity}
                 onChange={(e) => setCalcQuantity(Math.max(1, Number(e.target.value) || 1))}
-                className="w-20 text-center px-2 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all text-sm font-semibold"
+                className="w-20 text-center px-2 py-2 bg-transparent outline-none font-display text-lg font-bold text-brand-dark"
               />
               <button
                 type="button"
                 onClick={() => adjustQuantity(1)}
-                className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center text-brand-dark hover:bg-brand-dark hover:text-white transition-colors"
                 aria-label="Increase quantity"
               >
                 <Plus className="w-4 h-4" />
@@ -266,8 +267,8 @@ const ProductOrderCalculator = () => {
             {discountTiers.map((tier) => (
               <span
                 key={tier.label}
-                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  activeTier.label === tier.label ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-500'
+                className={`inline-flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
+                  activeTier.label === tier.label ? 'bg-brand-yellow text-brand-dark shadow-glow scale-105' : 'bg-ink-100 text-ink-500'
                 }`}
               >
                 <Percent className="w-3 h-3" />
@@ -278,17 +279,17 @@ const ProductOrderCalculator = () => {
         </div>
 
         {/* Matching products */}
-        <div className="bg-brand-light rounded-2xl p-6 flex flex-col justify-center">
+        <div className="bg-ink-50 rounded-3xl p-6 ring-1 ring-ink-200/70 flex flex-col justify-center">
           {!calcBrand ? (
-            <div className="text-center text-gray-400 py-8">
-              <PackageSearch className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+            <div className="text-center text-ink-400 py-10">
+              <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-soft ring-1 ring-black/5"><PackageSearch className="w-6 h-6 text-ink-400" /></span>
               <p className="text-sm">Pick a brand to see matching products</p>
             </div>
           ) : matchingProducts.length === 0 ? (
-            <div className="text-center text-gray-400 py-8 text-sm">No products found for this brand</div>
+            <div className="text-center text-ink-400 py-8 text-sm">No products found for this brand</div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-500">
+              <p className="text-sm font-semibold text-ink-500">
                 {matchingProducts.length} product{matchingProducts.length === 1 ? '' : 's'} from {calcBrand}
               </p>
               <div className="flex flex-wrap justify-center gap-3 max-h-72 overflow-y-auto p-1">
@@ -303,24 +304,24 @@ const ProductOrderCalculator = () => {
                         setCalcProductId(product._id);
                         setLightboxIndex(idx);
                       }}
-                      className={`relative w-24 bg-white rounded-lg border overflow-hidden shadow-sm text-left cursor-pointer hover:shadow-md transition-shadow ${
-                        isSelected ? 'border-brand-yellow ring-2 ring-brand-yellow' : 'border-gray-200'
+                      className={`relative w-24 bg-white rounded-2xl p-1 overflow-hidden text-left cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card ${
+                        isSelected ? 'ring-2 ring-brand-dark shadow-card' : 'ring-1 ring-black/5 shadow-soft'
                       }`}
                     >
                       {isSelected && (
-                        <span className="absolute top-1 right-1 z-10 bg-brand-yellow text-brand-dark rounded-full w-4 h-4 flex items-center justify-center">
+                        <span className="absolute top-1.5 right-1.5 z-10 bg-brand-dark text-brand-yellow rounded-full w-5 h-5 flex items-center justify-center">
                           <Check className="w-3 h-3" />
                         </span>
                       )}
-                      <div className="bg-gray-50 aspect-square flex items-center justify-center overflow-hidden">
+                      <div className="bg-ink-50 rounded-xl aspect-square flex items-center justify-center overflow-hidden">
                         {primary ? (
                           <img src={getImageUrl(primary.path)} alt={product.name} className="w-full h-full object-contain" loading="lazy" />
                         ) : (
-                          <PackageSearch className="w-6 h-6 text-gray-300" />
+                          <PackageSearch className="w-6 h-6 text-ink-300" />
                         )}
                       </div>
                       <div className="p-1.5 text-center">
-                        <p className="text-[10px] font-semibold text-gray-900 line-clamp-1">{product.name || 'Product'}</p>
+                        <p className="text-[10px] font-semibold text-brand-dark line-clamp-1">{product.name || 'Product'}</p>
                         <p className="text-[10px] font-bold text-brand-dark">{formatPrice(product.priceFrom)}</p>
                       </div>
                     </button>
@@ -329,27 +330,27 @@ const ProductOrderCalculator = () => {
               </div>
 
               {selectedProduct ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-                  <p className="text-sm font-bold text-gray-900 line-clamp-1">{selectedProduct.name}</p>
+                <div className="bg-white rounded-2xl ring-1 ring-black/5 shadow-soft p-5 space-y-2.5">
+                  <p className="text-sm font-bold text-brand-dark line-clamp-1">{selectedProduct.name}</p>
                   <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-gray-500">Unit price</span>
-                    <span className="font-semibold text-gray-900">{formatPrice(unitPrice)}</span>
+                    <span className="text-ink-500">Unit price</span>
+                    <span className="font-semibold text-brand-dark">{formatPrice(unitPrice)}</span>
                   </div>
                   <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-gray-500">Subtotal ({calcQuantity} units)</span>
-                    <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
+                    <span className="text-ink-500">Subtotal ({calcQuantity} units)</span>
+                    <span className="font-semibold text-brand-dark">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-gray-500">Discount ({activeTier.percent}%)</span>
+                    <span className="text-ink-500">Discount ({activeTier.percent}%)</span>
                     <span className="font-semibold text-green-600">- {formatPrice(discountAmount)}</span>
                   </div>
-                  <div className="flex items-baseline justify-between text-base pt-1 border-t border-gray-100">
-                    <span className="font-bold text-gray-900">Total</span>
-                    <span className="font-bold text-brand-dark">{formatPrice(total)}</span>
+                  <div className="flex items-baseline justify-between pt-3 mt-1 border-t border-dashed border-ink-200">
+                    <span className="font-bold text-brand-dark">Total</span>
+                    <span className="font-display text-2xl font-extrabold text-brand-dark">{formatPrice(total)}</span>
                   </div>
 
                   {nextTier && (
-                    <p className="text-xs text-gray-400 text-center pt-1">
+                    <p className="text-xs text-ink-400 text-center pt-1">
                       Order {nextTier.min - calcQuantity} more to unlock {nextTier.percent}% off.
                     </p>
                   )}
@@ -357,14 +358,14 @@ const ProductOrderCalculator = () => {
                   <button
                     type="button"
                     onClick={sendQuotationOnWhatsApp}
-                    className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbb59] text-white font-bold px-4 py-3 rounded-xl transition-colors shadow-sm"
+                    className="btn-whatsapp w-full mt-2 !py-3.5"
                   >
                     <MessageCircle className="w-5 h-5" />
                     Send Quotation on WhatsApp
                   </button>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 text-center pt-1">Tap a product above to get its price and quote.</p>
+                <p className="text-xs text-ink-400 text-center pt-1">Tap a product above to get its price and quote.</p>
               )}
             </div>
           )}

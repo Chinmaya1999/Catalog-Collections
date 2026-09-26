@@ -20,9 +20,12 @@ const OrderCalculator = lazy(() => import('./pages/OrderCalculator'));
 // Loading component
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-brand-light">
-    <div className="text-center">
-      <Loader2 className="w-12 h-12 text-brand-yellow animate-spin mx-auto mb-4" />
-      <p className="text-gray-600">Loading...</p>
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-dark shadow-lift">
+        <span className="absolute inset-0 animate-ping rounded-full bg-brand-yellow/30" />
+        <Loader2 className="relative w-7 h-7 text-brand-yellow animate-spin" />
+      </div>
+      <p className="text-sm font-semibold tracking-wide text-ink-500">Loading…</p>
     </div>
   </div>
 );

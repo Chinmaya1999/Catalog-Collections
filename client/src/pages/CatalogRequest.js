@@ -95,20 +95,30 @@ const CatalogRequest = () => {
     }
   };
 
+  const inputClass = (field) =>
+    `input-field ${errors[field] ? '!border-red-400 focus:!ring-red-200' : ''}`;
+
   if (submitSuccess) {
     return (
-      <div className="pt-20 min-h-screen bg-brand-light">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div className="pt-20 min-h-screen bg-brand-light relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-grid mask-radial" />
+        <div className="relative max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-lg p-8 text-center"
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+            className="rounded-[2rem] bg-white p-10 text-center shadow-lift ring-1 ring-black/5"
           >
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Request Submitted!</h2>
-            <p className="text-gray-600 mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.15, type: 'spring', damping: 12 }}
+              className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-[0_12px_30px_-8px_rgba(16,185,129,0.6)]"
+            >
+              <CheckCircle className="h-10 w-10 text-white" />
+            </motion.div>
+            <h2 className="text-3xl font-display font-extrabold tracking-tight text-brand-dark mb-3">Request Submitted!</h2>
+            <p className="text-ink-500 leading-7 mb-9">
               Thank you for your catalog request. Our team will contact you shortly using the provided phone number.
             </p>
             <button
@@ -116,7 +126,7 @@ const CatalogRequest = () => {
                 setSubmitSuccess(false);
                 navigate('/');
               }}
-              className="btn-primary inline-flex items-center"
+              className="btn-secondary !px-8"
             >
               Return to Home
             </button>
@@ -126,6 +136,13 @@ const CatalogRequest = () => {
     );
   }
 
+  const steps = [
+    'Tell us your name and phone number',
+    'Describe the products or customization you need',
+    'Submit the request and our team will contact you',
+    'Get personalized help with your bulk order',
+  ];
+
   return (
     <div className="pt-20 min-h-screen bg-brand-light">
       <SEO
@@ -133,133 +150,136 @@ const CatalogRequest = () => {
         description="Can't find the right catalog? Request a custom corporate gift catalog from Adihuman and get personalized assistance from our team."
         path="/catalog-request"
       />
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate('/')}
+          className="mb-8 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-sm font-semibold text-ink-600 shadow-soft ring-1 ring-black/5 transition-all hover:-translate-x-0.5 hover:text-brand-dark"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </button>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="grid overflow-hidden rounded-[2rem] bg-white shadow-lift ring-1 ring-black/5 lg:grid-cols-5"
         >
-          {/* Back Button */}
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Home
-          </button>
-
-          {/* Form Card */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-8 py-6">
-              <h1 className="text-3xl font-bold text-gray-900">Catalog Request</h1>
-              <p className="text-gray-800 mt-2">
+          {/* Info panel */}
+          <div className="relative overflow-hidden bg-brand-dark p-8 text-white sm:p-10 lg:col-span-2">
+            <div className="pointer-events-none absolute inset-0 bg-grid-dark mask-fade-b" />
+            <div className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-brand-yellow/25 blur-3xl" />
+            <div className="relative">
+              <p className="eyebrow !text-white/50">Catalog Request</p>
+              <h1 className="mt-4 text-4xl font-display font-extrabold leading-[1.05] tracking-tight">
+                Tell us what you need.
+              </h1>
+              <p className="mt-4 text-white/60">
                 Tell us what you need and our team will help you create it
+              </p>
+
+              <h3 className="mt-12 text-xs font-bold uppercase tracking-[0.2em] text-white/40">How it works</h3>
+              <ol className="mt-5 space-y-5">
+                {steps.map((step, index) => (
+                  <li key={step} className="flex items-start gap-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-yellow font-display text-xs font-bold text-brand-dark">
+                      {index + 1}
+                    </span>
+                    <span className="pt-1 text-sm leading-6 text-white/75">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6 p-8 sm:p-10 lg:col-span-3">
+            {/* Name */}
+            <div>
+              <label htmlFor="name" className="field-label">
+                Your Name *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={inputClass('name')}
+                placeholder="Enter your name"
+              />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1.5">{errors.name}</p>
+              )}
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label htmlFor="phoneNumber" className="field-label">
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className={inputClass('phoneNumber')}
+                placeholder="Enter your phone number (10-15 digits)"
+              />
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1.5">{errors.phoneNumber}</p>
+              )}
+              <p className="text-ink-400 text-xs mt-1.5">
+                We'll contact you on this number regarding your request
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              {/* Name */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all`}
-                  placeholder="Enter your name"
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </div>
-
-              {/* Phone Number */}
-              <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all`}
-                  placeholder="Enter your phone number (10-15 digits)"
-                />
-                {errors.phoneNumber && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
-                )}
-                <p className="text-gray-500 text-sm mt-1">
-                  We'll contact you on this number regarding your request
-                </p>
-              </div>
-
-              {/* Custom Message */}
-              <div>
-                <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">
-                  What do you need? *
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  rows="4"
-                  maxLength="1000"
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.message ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all resize-none`}
-                  placeholder="Tell us the products, quantity, event date, budget, or customization you need..."
-                />
-                <div className="flex items-center justify-between mt-1">
-                  {errors.message ? (
-                    <p className="text-red-500 text-sm">{errors.message}</p>
-                  ) : (
-                    <span />
-                  )}
-                  <p className="text-gray-400 text-xs">{formData.message.length}/1000</p>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Submitting...
-                  </>
+            {/* Custom Message */}
+            <div>
+              <label htmlFor="message" className="field-label">
+                What do you need? *
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                rows="6"
+                maxLength="1000"
+                className={`${inputClass('message')} resize-none`}
+                placeholder="Tell us the products, quantity, event date, budget, or customization you need..."
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                {errors.message ? (
+                  <p className="text-red-500 text-sm">{errors.message}</p>
                 ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    Submit Request
-                  </>
+                  <span />
                 )}
-              </button>
-            </form>
-          </div>
+                <p className="text-ink-400 text-xs tabular-nums">{formData.message.length}/1000</p>
+              </div>
+            </div>
 
-          {/* Info Card */}
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="font-semibold text-gray-900 mb-2">How it works</h3>
-            <ol className="list-decimal list-inside space-y-2 text-gray-600 text-sm">
-              <li>Tell us your name and phone number</li>
-              <li>Describe the products or customization you need</li>
-              <li>Submit the request and our team will contact you</li>
-              <li>Get personalized help with your bulk order</li>
-            </ol>
-          </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary w-full !py-4 !text-[15px] group"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-dark"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  Submit Request
+                  <Send className="w-4 h-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-0.5" />
+                </>
+              )}
+            </button>
+          </form>
         </motion.div>
       </div>
     </div>

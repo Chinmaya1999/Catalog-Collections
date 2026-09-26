@@ -113,7 +113,7 @@ const FestiveOfferCard = ({ announcement, onClose, compact = false }) => {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl shadow-2xl text-center text-white ${meta.bgClass} ${
+      className={`relative overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-white/10 text-center text-white ${meta.bgClass} ${
         compact ? 'p-6' : 'p-8 sm:p-10'
       }`}
     >
@@ -122,7 +122,7 @@ const FestiveOfferCard = ({ announcement, onClose, compact = false }) => {
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/20 backdrop-blur hover:bg-white/30 flex items-center justify-center transition-colors"
           aria-label="Close offer"
         >
           <X className="w-4 h-4" />
@@ -153,7 +153,7 @@ const FestiveOfferCard = ({ announcement, onClose, compact = false }) => {
             href={ctaLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-6 py-3 rounded-xl hover:scale-105 transition-transform shadow-lg"
+            className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-7 py-3.5 rounded-full hover:scale-105 transition-transform shadow-lg"
           >
             {announcement.ctaText || 'Shop Now'}
             <ArrowRight className="w-4 h-4" />
@@ -162,7 +162,7 @@ const FestiveOfferCard = ({ announcement, onClose, compact = false }) => {
           <Link
             to={ctaLink}
             onClick={onClose}
-            className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-6 py-3 rounded-xl hover:scale-105 transition-transform shadow-lg"
+            className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-7 py-3.5 rounded-full hover:scale-105 transition-transform shadow-lg"
           >
             {announcement.ctaText || 'Shop Now'}
             <ArrowRight className="w-4 h-4" />

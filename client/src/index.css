@@ -3,36 +3,172 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    @apply bg-brand-light text-brand-dark antialiased;
+    @apply bg-brand-light text-brand-dark antialiased font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display;
+    letter-spacing: -0.025em;
+  }
+
+  ::selection {
+    @apply bg-brand-yellow text-brand-dark;
+  }
+
+  :focus-visible {
+    outline: 2px solid #F5A623;
+    outline-offset: 2px;
   }
 }
 
 @layer components {
+  /* ---------- Buttons ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 ease-out disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+  }
+
   .btn-primary {
-    @apply bg-brand-yellow text-brand-dark font-semibold px-6 py-3 rounded-lg hover:bg-brand-gold transition-all duration-300 transform hover:scale-105 shadow-lg;
+    @apply btn bg-brand-yellow text-brand-dark shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_6px_20px_-6px_rgba(245,166,35,0.6)] hover:-translate-y-0.5 hover:bg-[#FFDA5E] hover:shadow-glow;
   }
-  
+
   .btn-secondary {
-    @apply bg-brand-dark text-white font-semibold px-6 py-3 rounded-lg hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 shadow-lg;
+    @apply btn bg-brand-dark text-white shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 hover:bg-ink-800;
   }
-  
+
+  .btn-outline {
+    @apply btn border border-ink-200 bg-white text-brand-dark hover:border-brand-dark hover:bg-ink-50;
+  }
+
+  .btn-glass {
+    @apply btn border border-white/20 bg-white/10 text-white backdrop-blur-md hover:border-white/40 hover:bg-white/20;
+  }
+
+  .btn-whatsapp {
+    @apply btn bg-[#25D366] text-white shadow-[0_8px_24px_-8px_rgba(37,211,102,0.7)] hover:-translate-y-0.5 hover:bg-[#1fbb59];
+  }
+
+  /* ---------- Surfaces ---------- */
   .card {
-    @apply bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl;
+    @apply overflow-hidden rounded-3xl border border-ink-200/70 bg-white shadow-soft transition-all duration-300 hover:shadow-card;
   }
-  
+
+  .surface {
+    @apply rounded-3xl border border-ink-200/70 bg-white shadow-soft;
+  }
+
+  .glass {
+    @apply border border-white/60 bg-white/70 backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .glass-dark {
+    @apply border border-white/10 bg-black/40 backdrop-blur-xl;
+  }
+
+  /* ---------- Forms ---------- */
   .input-field {
-    @apply w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow outline-none transition-all duration-300;
+    @apply w-full rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm text-brand-dark placeholder:text-ink-400 outline-none transition-all duration-200 hover:border-ink-300 focus:border-brand-dark focus:ring-4 focus:ring-brand-yellow/30;
+  }
+
+  .field-label {
+    @apply mb-2 block text-[13px] font-semibold text-ink-700;
+  }
+
+  /* ---------- Typography helpers ---------- */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-ink-500;
+  }
+
+  .eyebrow::before {
+    content: '';
+    @apply h-1.5 w-1.5 rounded-full bg-brand-gold;
+  }
+
+  .section-title {
+    @apply font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-brand-dark sm:text-5xl;
+  }
+
+  .link-underline {
+    @apply relative inline-flex items-center gap-1.5 font-semibold text-brand-dark;
+  }
+
+  .link-underline::after {
+    content: '';
+    @apply absolute -bottom-1 left-0 h-[2px] w-full origin-left scale-x-100 bg-brand-yellow transition-transform duration-300;
+  }
+
+  .link-underline:hover::after {
+    @apply scale-x-0 origin-right;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink-700 transition-all duration-200 hover:border-brand-dark;
+  }
+
+  .chip-active {
+    @apply border-brand-dark bg-brand-dark text-white hover:border-brand-dark;
+  }
+
+  /* ---------- Loading skeleton ---------- */
+  .skeleton {
+    @apply relative overflow-hidden bg-ink-100;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/70 to-transparent;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-yellow to-brand-gold bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-brand-gold via-brand-yellow to-brand-gold bg-clip-text text-transparent;
+    background-size: 200% auto;
+  }
+
+  .text-gradient-animated {
+    @apply text-gradient animate-gradient-pan;
   }
 
   .bg-gradient-brand {
     @apply bg-gradient-to-r from-brand-yellow to-brand-gold;
+  }
+
+  /* Faint engineering grid used behind hero sections */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(11, 11, 12, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(11, 11, 12, 0.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  .bg-grid-dark {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent);
+    mask-image: linear-gradient(to bottom, black 40%, transparent);
+  }
+
+  .mask-radial {
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
   }
 
   .no-scrollbar {
@@ -172,21 +308,27 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #FFD700;
-  border-radius: 4px;
+  background: #D4D4D8;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #FFA500;
+  background: #A1A1AA;
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
+
 .max-w-7xl {
-max-width: 100rem;
+  max-width: 100rem;
 }

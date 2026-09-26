@@ -87,82 +87,141 @@ const Contact = memo(() => {
         path="/contact"
         structuredData={localBusinessSchema}
       />
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-brand-yellow to-brand-gold py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden pt-36 pb-14 sm:pt-44">
+        <div className="pointer-events-none absolute inset-0 bg-grid mask-radial" />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[50rem] -translate-x-1/2 rounded-full bg-brand-yellow/30 blur-3xl" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center"
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto max-w-3xl text-center"
           >
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-brand-dark mb-4">
-              Contact Us
+            <p className="eyebrow justify-center">Contact Us</p>
+            <h1 className="mt-6 text-5xl font-display font-extrabold leading-[0.95] tracking-tightest text-brand-dark sm:text-7xl">
+              Let's <span className="text-gradient-animated">talk gifting.</span>
             </h1>
-            <p className="text-xl text-brand-dark/80 max-w-2xl mx-auto">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-ink-500">
               We are delighted to learn that you have some questions for us, and we assure you that we are easily approachable and ready to assist.
             </p>
+          </motion.div>
+
+          {/* Quick contact methods */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3"
+          >
+            <a
+              href="mailto:contact@adihuman.com"
+              className="group flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-yellow transition-transform duration-300 group-hover:rotate-6">
+                <Mail className="h-5 w-5 text-brand-dark" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">Email</p>
+                <p className="truncate font-semibold text-brand-dark">contact@adihuman.com</p>
+              </div>
+            </a>
+
+            <a
+              href="https://wa.me/918296810381"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#25D366] transition-transform duration-300 group-hover:rotate-6">
+                <MessageCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">WhatsApp</p>
+                <p className="truncate font-semibold text-brand-dark">+91 82968 10381</p>
+              </div>
+            </a>
+
+            <a
+              href="tel:+918296810381"
+              className="group flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-dark transition-transform duration-300 group-hover:rotate-6">
+                <Phone className="h-5 w-5 text-brand-yellow" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">Phone</p>
+                <p className="truncate font-semibold text-brand-dark">+91 82968 10381</p>
+              </div>
+            </a>
           </motion.div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section className="py-16">
+      <section className="pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Contact Form */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="lg:col-span-7"
             >
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-2xl font-display font-bold text-brand-dark mb-6">
+              <div className="h-full rounded-[2rem] bg-white p-7 shadow-card ring-1 ring-black/5 sm:p-10">
+                <h2 className="text-3xl font-display font-extrabold tracking-tight text-brand-dark">
                   Drop us a line
                 </h2>
-                
+                <p className="mt-2 mb-8 text-ink-500">We usually reply within a few hours.</p>
+
                 {submitted ? (
-                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">
+                  <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-5 py-4 text-emerald-700 ring-1 ring-emerald-200">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"><Send className="h-4 w-4" /></span>
                     Thank you for your message! We'll get back to you soon.
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-5">
                     {error && (
-                      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+                      <div className="rounded-2xl bg-red-50 px-5 py-4 text-red-700 ring-1 ring-red-200">
                         {error}
                       </div>
                     )}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all"
-                        placeholder="Your name"
-                      />
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label className="field-label">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          required
+                          className="input-field"
+                          placeholder="Your name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="field-label">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          required
+                          className="input-field"
+                          placeholder="your@email.com"
+                        />
+                      </div>
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="field-label">
                         Message
                       </label>
                       <textarea
@@ -170,16 +229,16 @@ const Contact = memo(() => {
                         value={formData.message}
                         onChange={handleChange}
                         required
-                        rows="5"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-transparent outline-none transition-all resize-none"
+                        rows="6"
+                        className="input-field resize-none"
                         placeholder="Your message..."
                       />
                     </div>
-                    
+
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-secondary w-full !py-4 !text-[15px] group"
                     >
                       {loading ? (
                         <>
@@ -188,8 +247,8 @@ const Contact = memo(() => {
                         </>
                       ) : (
                         <>
-                          <Send className="w-5 h-5" />
                           Submit
+                          <Send className="w-4 h-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-0.5" />
                         </>
                       )}
                     </button>
@@ -200,89 +259,41 @@ const Contact = memo(() => {
 
             {/* Contact Information */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="space-y-6"
+              className="flex flex-col gap-6 lg:col-span-5"
             >
-              {/* Contact Methods */}
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-2xl font-display font-bold text-brand-dark mb-6">
-                  Get in Touch
-                </h2>
-                
-                <div className="space-y-4">
-                  <a
-                    href="mailto:contact@adihuman.com"
-                    className="flex items-center gap-4 p-4 bg-brand-light rounded-lg hover:bg-brand-yellow/20 transition-colors"
-                  >
-                    <div className="w-12 h-12 bg-brand-yellow rounded-full flex items-center justify-center">
-                      <Mail className="w-6 h-6 text-brand-dark" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-brand-dark">Email</p>
-                      <p className="text-gray-600">contact@adihuman.com</p>
-                    </div>
-                  </a>
-                  
-                  <a
-                    href="https://wa.me/918296810381"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 bg-brand-light rounded-lg hover:bg-brand-yellow/20 transition-colors"
-                  >
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                      <MessageCircle className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-brand-dark">WhatsApp</p>
-                      <p className="text-gray-600">+91 82968 10381</p>
-                    </div>
-                  </a>
-                  
-                  <a
-                    href="tel:+918296810381"
-                    className="flex items-center gap-4 p-4 bg-brand-light rounded-lg hover:bg-brand-yellow/20 transition-colors"
-                  >
-                    <div className="w-12 h-12 bg-brand-yellow rounded-full flex items-center justify-center">
-                      <Phone className="w-6 h-6 text-brand-dark" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-brand-dark">Phone</p>
-                      <p className="text-gray-600">+91 82968 10381</p>
-                    </div>
-                  </a>
-                </div>
-              </div>
-
               {/* Store Information */}
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-2xl font-display font-bold text-brand-dark mb-6">
+              <div className="relative overflow-hidden rounded-[2rem] bg-brand-dark p-7 text-white shadow-card sm:p-10">
+                <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand-yellow/20 blur-3xl" />
+                <p className="eyebrow !text-white/50">Visit us</p>
+                <h2 className="relative mt-3 text-2xl font-display font-extrabold tracking-tight">
                   Adihuman Innovation Studio
                 </h2>
-                
-                <div className="space-y-4">
+
+                <div className="relative mt-8 space-y-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-brand-yellow rounded-full flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-6 h-6 text-brand-dark" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+                      <MapPin className="h-5 w-5 text-brand-yellow" />
                     </div>
                     <div>
-                      <p className="font-semibold text-brand-dark mb-1">Address</p>
-                      <p className="text-gray-600">
+                      <p className="mb-1 text-sm font-semibold text-white">Address</p>
+                      <p className="text-sm leading-6 text-white/60">
                         Shop No. 8, Shri Balaji, KKR Complex, 1st Floor,<br />
                         Opposite SCT College, Kaggadasapura, Bangalore.<br />
                         Pin - 560075
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-brand-yellow rounded-full flex items-center justify-center flex-shrink-0">
-                      <Clock className="w-6 h-6 text-brand-dark" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+                      <Clock className="h-5 w-5 text-brand-yellow" />
                     </div>
                     <div>
-                      <p className="font-semibold text-brand-dark mb-1">Store Hours</p>
-                      <p className="text-gray-600">
+                      <p className="mb-1 text-sm font-semibold text-white">Store Hours</p>
+                      <p className="text-sm text-white/60">
                         Open every day from 11 AM to 8 PM
                       </p>
                     </div>
@@ -291,28 +302,26 @@ const Contact = memo(() => {
               </div>
 
               {/* Company Details */}
-              <div className="bg-brand-dark rounded-2xl shadow-lg p-8 text-white">
-                <h2 className="text-xl font-display font-bold mb-4">
+              <div className="rounded-[2rem] bg-white p-7 shadow-soft ring-1 ring-black/5 sm:p-8">
+                <h2 className="text-lg font-display font-bold text-brand-dark">
                   Company Details
                 </h2>
-                <div className="space-y-2 text-gray-300">
-                  <p>
-                    <span className="text-brand-yellow">Owned by:</span> UUO Innovation Private Limited
-                  </p>
-                  <p>
-                    <span className="text-brand-yellow">GST Number:</span> 29AACCU4243J1Z4
-                  </p>
-                </div>
+                <dl className="mt-5 divide-y divide-ink-200/70 text-sm">
+                  <div className="flex items-center justify-between gap-4 py-3">
+                    <dt className="text-ink-500">Owned by</dt>
+                    <dd className="text-right font-semibold text-brand-dark">UUO Innovation Private Limited</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 py-3">
+                    <dt className="text-ink-500">GST Number</dt>
+                    <dd className="font-mono font-semibold text-brand-dark">29AACCU4243J1Z4</dd>
+                  </div>
+                </dl>
               </div>
             </motion.div>
           </div>
-        </div>
-      </section>
 
-      {/* Terms Notice */}
-      <section className="py-8 bg-white border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-600">
+          {/* Terms Notice */}
+          <p className="mt-12 text-center text-xs text-ink-400">
             By using the website, you acknowledge that you have read, understood, and agreed to these Terms of Service.
           </p>
         </div>
