@@ -122,6 +122,7 @@ const pdfAnalysisRoutes = require('./routes/pdfAnalysis');
 const announcementRoutes = require('./routes/announcement');
 const productExtractionRoutes = require('./routes/productExtraction');
 const publicProductsRoutes = require('./routes/publicProducts');
+const priceListRoutes = require('./routes/priceList');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -135,6 +136,7 @@ app.use('/api/pdf-analysis', pdfAnalysisRoutes);
 app.use('/api/announcement', announcementRoutes);
 app.use('/api/product-extraction', productExtractionRoutes);
 app.use('/api/products', publicProductsRoutes);
+app.use('/api/price-list', priceListRoutes);
 
 // ==================== Health Check ====================
 app.get('/api/health', (req, res) => {

@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   productExtraction: `${API_BASE_URL}/api/product-extraction`,
   products: `${API_BASE_URL}/api/products`,
   announcement: `${API_BASE_URL}/api/announcement`,
+  priceList: `${API_BASE_URL}/api/price-list`,
   health: `${API_BASE_URL}/api/health`
 };
 

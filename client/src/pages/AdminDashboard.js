@@ -17,11 +17,13 @@ import {
   Trash2,
   BookOpen,
   Loader2,
-  PackageSearch
+  PackageSearch,
+  IndianRupee
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
+import PriceListTab from './superadmin/PriceListTab';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('catalogs');
@@ -350,6 +352,7 @@ const AdminDashboard = () => {
   const navItems = [
     { id: 'catalogs', label: 'Catalogs', description: 'Browse available product catalogs', icon: Box },
     { id: 'vendors', label: 'Find Vendors', description: 'Search for vendors by product code near your location', icon: Search },
+    { id: 'price-list', label: 'Price List', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
     { id: 'requests', label: 'Catalog Requests', description: 'View and manage catalog requests from users', icon: Gift, badge: catalogRequests.length }
   ];
   const currentNavItem = navItems.find(item => item.id === activeTab) || navItems[0];
@@ -768,6 +771,8 @@ const AdminDashboard = () => {
         )}
 
         {/* Catalog Requests Tab */}
+        {activeTab === 'price-list' && <PriceListTab />}
+
         {activeTab === 'requests' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

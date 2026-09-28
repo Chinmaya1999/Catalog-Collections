@@ -26,7 +26,8 @@ import {
   Tag,
   ArrowRight,
   Gift,
-  Megaphone
+  Megaphone,
+  IndianRupee
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -35,11 +36,13 @@ import PdfAnalysisTab from './superadmin/PdfAnalysisTab';
 import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 import AnnouncementsTab from './superadmin/AnnouncementsTab';
 import ProductManagementTab from './superadmin/ProductManagementTab';
+import PriceListTab from './superadmin/PriceListTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
   { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
+  { id: 'price-list', label: 'Price List', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'products', label: 'Shop Products', description: 'Manage every product shown in the public Shop', icon: Package },
@@ -1204,6 +1207,9 @@ const SuperadminDashboard = () => {
 
         {/* Shop Products Tab */}
         {activeTab === 'products' && <ProductManagementTab />}
+
+        {/* Price List Tab */}
+        {activeTab === 'price-list' && <PriceListTab />}
 
         {/* Announcements Tab */}
         {activeTab === 'announcements' && <AnnouncementsTab />}
