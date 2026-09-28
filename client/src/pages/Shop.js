@@ -23,7 +23,7 @@ import { useSavedProducts } from '../hooks/useSavedProducts';
 import { swatchColor } from '../utils/colorSwatch';
 
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
+  { value: 'newest', label: 'Featured' },
   { value: 'price_asc', label: 'Price: Low to High' },
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'name_asc', label: 'Name: A to Z' }

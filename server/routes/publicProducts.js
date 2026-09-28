@@ -6,6 +6,7 @@ const router = express.Router();
 
 const PAGE_SIZE_DEFAULT = 24;
 const PAGE_SIZE_MAX = 60;
+const PINNED_CATEGORY_NAME = 'Combo & Gift Sets';
 
 // ==================== Public catalog (no auth - anyone can browse) ====================
 // Only ever returns isPublished:true products. Unapproved/unpublished data never reaches
@@ -70,12 +71,43 @@ router.get('/', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX);
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
 
+    // The default order always lists Combo & Gift Sets first, so newly created products
+    // don't push them down the page. An explicit price/name sort is left untouched.
+    const pinnedCategory = sort === sortOptions.newest
+      ? await Category.findOne({ name: PINNED_CATEGORY_NAME }).select('_id')
+      : null;
+    const productsQuery = pinnedCategory
+      ? Product.aggregate([
+          { $match: Product.find(filter).cast(Product) },
+          {
+            $addFields: {
+              _pinned: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ['$category', pinnedCategory._id] },
+                      { $in: [pinnedCategory._id, { $ifNull: ['$categories', []] }] }
+                    ]
+                  },
+                  0,
+                  1
+                ]
+              }
+            }
+          },
+          { $sort: { _pinned: 1, ...sort } },
+          { $skip: (page - 1) * limit },
+          { $limit: limit },
+          { $project: { _pinned: 0, 'source.rawAiJson': 0, attributes: 0 } }
+        ])
+      : Product.find(filter)
+          .select('-source.rawAiJson -attributes')
+          .sort(sort)
+          .skip((page - 1) * limit)
+          .limit(limit);
+
     const [products, total, facets, categoryDocs] = await Promise.all([
-      Product.find(filter)
-        .select('-source.rawAiJson -attributes')
-        .sort(sort)
-        .skip((page - 1) * limit)
-        .limit(limit),
+      productsQuery,
       Product.countDocuments(filter),
       Product.aggregate([
         { $match: { isPublished: true } },
