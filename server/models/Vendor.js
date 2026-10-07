@@ -8,12 +8,12 @@ const vendorSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   address: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   location: {
@@ -47,7 +47,7 @@ const vendorSchema = new mongoose.Schema({
   },
   pincode: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   catalogId: {
@@ -57,7 +57,7 @@ const vendorSchema = new mongoose.Schema({
   },
   productCode: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
   productCodes: {
@@ -65,9 +65,10 @@ const vendorSchema = new mongoose.Schema({
     default: [],
     required: false
   },
+  // 0 = not quoted yet ("price on enquiry"), e.g. vendors found via web research.
   price: {
     type: Number,
-    required: true
+    default: 0
   },
   priceRange: {
     minPrice: {
@@ -91,6 +92,10 @@ const vendorSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Web-research leads: where the details came from, and whether someone has confirmed them.
+  source: { type: String, default: '', trim: true },
+  notes: { type: String, default: '', trim: true },
+  verified: { type: Boolean, default: true },
   active: {
     type: Boolean,
     default: true

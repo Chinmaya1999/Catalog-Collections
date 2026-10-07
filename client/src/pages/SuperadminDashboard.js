@@ -1399,7 +1399,7 @@ const SuperadminDashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <DollarSign size={16} className="text-green-600" />
-                                      <span className="font-bold text-green-700">₹{vendor.price}</span>
+                                      <span className="font-bold text-green-700">{vendor.price > 0 ? `₹${vendor.price}` : 'Price on enquiry'}</span>
                                       {vendor.transportCharges > 0 && (
                                         <span className="text-gray-500">+ ₹{vendor.transportCharges} transport</span>
                                       )}
@@ -1719,7 +1719,7 @@ const SuperadminDashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-700">
                                       <DollarSign size={16} className="text-green-600" />
-                                      <span className="font-bold text-green-700">₹{vendor.price}</span>
+                                      <span className="font-bold text-green-700">{vendor.price > 0 ? `₹${vendor.price}` : 'Price on enquiry'}</span>
                                       {vendor.transportCharges > 0 && (
                                         <span className="text-gray-500">+ ₹{vendor.transportCharges} transport</span>
                                       )}
@@ -2263,7 +2263,7 @@ const SuperadminDashboard = () => {
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                       />
                     </div>
-                    {vendorFormData.location.coordinates[0] !== 0 && vendorFormData.location.coordinates[1] !== 0 && (
+                    {vendorFormData.location?.coordinates?.length === 2 && vendorFormData.location.coordinates[0] !== 0 && vendorFormData.location.coordinates[1] !== 0 && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <p className="text-sm text-green-800">
                           <MapPin className="w-4 h-4 inline mr-1" />
