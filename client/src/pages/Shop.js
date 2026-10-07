@@ -513,26 +513,20 @@ const Shop = () => {
         path="/shop"
       />
 
-      {/* Sticky toolbar: title, search, admin pricing/customer toggle */}
-      <header className="sticky top-[72px] z-30 border-b border-ink-200/70 bg-brand-light/90 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-3">
-          <div className="mr-auto leading-tight min-w-0">
-            <h1 className="font-display font-extrabold text-xl text-brand-dark tracking-tight">ADIHUMAN</h1>
-            <p className="hidden sm:block text-[11px] uppercase tracking-[0.1em] text-ink-400">Corporate gifting catalogue</p>
-          </div>
-
-          <div className="relative order-3 sm:order-none w-full sm:w-auto sm:flex-1 sm:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
+      {/* Search row (the site Navbar above is the only nav) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
             <input
               type="search"
               placeholder="Search code or item, e.g. AH-K301, bamboo, bottle"
               aria-label="Search products"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-full border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm text-brand-dark outline-none transition-all placeholder:text-ink-400 focus:border-brand-dark focus:ring-4 focus:ring-brand-yellow/30"
+              className="w-full rounded-full border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-brand-dark outline-none transition-all placeholder:text-ink-400 focus:border-brand-dark focus:ring-4 focus:ring-brand-yellow/30"
             />
           </div>
-
           {adminToken && (
             <Segmented
               label="View mode"
@@ -542,7 +536,7 @@ const Shop = () => {
             />
           )}
         </div>
-      </header>
+      </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         {/* Customer budget per unit */}
@@ -592,7 +586,7 @@ const Shop = () => {
         )}
       </section>
 
-      <section ref={topRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-10 scroll-mt-40">
+      <section ref={topRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-10 scroll-mt-28">
         {/* Count + controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
