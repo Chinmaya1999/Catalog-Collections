@@ -1,6 +1,7 @@
 const express = require('express');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -35,8 +36,10 @@ router.get('/', async (req, res) => {
         const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         // Broadened so a search matches on category/color too (e.g. typing "storage" or
         // "navy blue" surfaces relevant products even when the term isn't in the name).
+        // Customers see "AH-K301" (our code); the stored SKU is the supplier's "HGS-K301".
+        const skuRe = new RegExp(q.replace(/^ah-/i, 'HGS-').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         filter.$or = [
-          { name: re }, { brand: re }, { material: re }, { description: re }, { 'variants.sku': re },
+          { name: re }, { brand: re }, { material: re }, { description: re }, { 'variants.sku': re }, { 'variants.sku': skuRe },
           { categoryName: re }, { categoryNames: re }, { 'colors.name': re }
         ];
       }
@@ -53,6 +56,7 @@ router.get('/', async (req, res) => {
       if (req.query.minPrice) filter.priceFrom.$gte = Number(req.query.minPrice);
       if (req.query.maxPrice) filter.priceFrom.$lte = Number(req.query.maxPrice);
     }
+    if (req.query.hasPhoto === '1') filter['images.0'] = { $exists: true };
     if (req.query.color) {
       filter['colors.name'] = new RegExp(`^${req.query.color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     }
@@ -64,6 +68,7 @@ router.get('/', async (req, res) => {
       price_asc: { priceFrom: 1, _id: 1 },
       price_desc: { priceFrom: -1, _id: 1 },
       name_asc: { name: 1, _id: 1 },
+      code: { 'variants.0.sku': 1, _id: 1 },
       newest: { publishedAt: -1, _id: 1 }
     };
     const sort = sortOptions[req.query.sort] || sortOptions.newest;
@@ -98,7 +103,7 @@ router.get('/', async (req, res) => {
           { $sort: { _pinned: 1, ...sort } },
           { $skip: (page - 1) * limit },
           { $limit: limit },
-          { $project: { _pinned: 0, 'source.rawAiJson': 0, attributes: 0 } }
+          { $project: { _pinned: 0, 'source.rawAiJson': 0, attributes: 0, supplierCost: 0, supplierCode: 0 } }
         ])
       : Product.find(filter)
           .select('-source.rawAiJson -attributes')
@@ -179,6 +184,24 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error fetching public products:', error);
     res.status(500).json({ message: 'Error fetching products' });
+  }
+});
+
+// Admin-only: supplier cost per product id, for the Shop page's costing view. Authenticated and
+// role-checked - the public endpoints above never return supplierCost (schema select:false).
+router.get('/costs', auth, async (req, res) => {
+  if (!req.admin || req.admin.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Superadmin access required' });
+  }
+  try {
+    const ids = String(req.query.ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, 200);
+    const docs = await Product.find({ _id: { $in: ids } }).select('+supplierCost +supplierCode');
+    const costs = {};
+    docs.forEach((d) => { costs[d._id] = { cost: d.supplierCost, supplierCode: d.supplierCode }; });
+    res.json({ costs });
+  } catch (error) {
+    console.error('Error fetching product costs:', error);
+    res.status(500).json({ message: 'Error fetching costs' });
   }
 });
 

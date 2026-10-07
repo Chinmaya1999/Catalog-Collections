@@ -65,6 +65,10 @@ const productSchema = new mongoose.Schema({
   // Denormalized from variants[].sellingPrice||mrp so the public catalog can filter/sort by
   // price without an aggregation pipeline over the variants subarray.
   priceFrom: { type: Number, default: null },
+  // Supplier-side data for the admin-only costing view. select:false keeps these out of every
+  // default query, so the public catalog can never leak cost/margin by accident.
+  supplierCost: { type: Number, default: null, select: false },
+  supplierCode: { type: String, default: null, select: false },
   possibleDuplicateOf: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
