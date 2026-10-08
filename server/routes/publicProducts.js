@@ -218,14 +218,16 @@ const requireSuperadmin = (req, res, next) => {
 // settings the server doesn't know about). Descriptions are left out to keep the payload small.
 router.get('/admin/catalog', auth, requireSuperadmin, async (req, res) => {
   try {
+    // Only the fields the Shop cards/table use. Sorted here rather than in MongoDB: sorting ~1,400
+    // full documents without an index can exceed the database's sort memory limit and fail.
     const products = await Product.find({ isPublished: true })
-      .select('-source -attributes -description +supplierCost +supplierCode')
-      .sort({ publishedAt: -1, _id: 1 })
+      .select('+supplierCost name brand categoryName categoryNames badges publishedAt priceFrom colors.name colors.code variants.sku images.path images.isPrimary')
       .lean();
+    products.sort((a, b) => (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)) || String(a._id).localeCompare(String(b._id)));
     res.json({ products });
   } catch (error) {
     console.error('Error fetching admin catalog:', error);
-    res.status(500).json({ message: 'Error fetching catalog' });
+    res.status(500).json({ message: 'Error fetching catalog', detail: error.message });
   }
 });
 

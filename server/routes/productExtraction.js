@@ -214,7 +214,10 @@ router.get('/products', async (req, res) => {
     if (req.query.jobId) filter['source.jobId'] = req.query.jobId;
     const products = await Product.find(filter)
       .select('-source.rawAiJson -attributes')
-      .sort({ 'source.pageNumber': 1 })
+      .sort({ 'source.pageNumber': 1, _id: 1 })
+      // The whole catalogue is sorted here with no supporting index; without disk use MongoDB fails
+      // the query ("Sort exceeded memory limit") once the products outgrow its in-memory sort budget.
+      .allowDiskUse(true)
       .populate('source.jobId', 'originalName status createdAt filePath')
       .populate('vendorCatalogId', 'name pdfFile')
       .lean();

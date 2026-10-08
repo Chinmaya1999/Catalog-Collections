@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Edit, ImagePlus, Loader2, PackageSearch, Save, Search, Trash2, X } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { BookOpen, Edit, ImagePlus, Loader2, PackageSearch, Save, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../../config/api';
 import PDFViewer from '../../components/PDFViewer';
+import CostsProfitDrawer from '../../components/CostsProfitDrawer';
+import { usePricing } from '../../hooks/usePricing';
 
 const emptyForm = {
   name: '',
@@ -26,17 +29,24 @@ const ProductManagementTab = () => {
   const [selectedImageFiles, setSelectedImageFiles] = useState([]);
   const [search, setSearch] = useState('');
   const [pdfViewer, setPdfViewer] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [costsOpen, setCostsOpen] = useState(false);
+  // Same Costs & profit settings the Shop page's "My pricing" view uses (saved per superadmin).
+  const { pricing, setSetting, setCategory } = usePricing(localStorage.getItem('adminToken'));
 
   const fetchProducts = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${API_ENDPOINTS.productExtraction}/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) setProducts(await response.json());
+      else setLoadError(response.status === 401 ? 'Your login has expired. Log in again.' : `The server could not load products (error ${response.status}).`);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setLoadError('Could not reach the server.');
     } finally {
       setLoading(false);
     }
@@ -64,6 +74,12 @@ const ProductManagementTab = () => {
     }
     return null;
   };
+
+  const categoryNames = useMemo(() => {
+    const names = new Set();
+    products.forEach(product => { if (product.categoryName) names.add(product.categoryName); });
+    return [...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -246,7 +262,7 @@ const ProductManagementTab = () => {
           <h2 className="text-2xl font-bold text-gray-900">Shop Product Management</h2>
           <p className="mt-1 text-gray-600">Edit the products, images, prices and details shown on the public Shop page.</p>
         </div>
-        <div className="flex items-center gap-3"><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{filteredProducts.length} of {products.length} products</span></div>
+        <div className="flex flex-wrap items-center gap-3"><button onClick={() => setCostsOpen(true)} className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-900 hover:border-yellow-400"><SlidersHorizontal className="h-4 w-4" /> Costs &amp; profit</button><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{filteredProducts.length} of {products.length} products</span></div>
       </div>
 
       <div className="relative max-w-md">
@@ -264,6 +280,13 @@ const ProductManagementTab = () => {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+          <span>{loadError}</span>
+          <button onClick={fetchProducts} className="rounded-lg bg-red-600 px-3 py-1.5 font-bold text-white hover:bg-red-700">Retry</button>
+        </div>
+      )}
 
       {filteredProducts.length === 0 ? (
         <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{search ? `No products match "${search}".` : 'No products found.'}</p></div>
@@ -324,6 +347,20 @@ const ProductManagementTab = () => {
           </form>
         </div>
       )}
+
+      <AnimatePresence>
+        {costsOpen && (
+          <CostsProfitDrawer
+            pricing={pricing}
+            setSetting={setSetting}
+            setCategory={setCategory}
+            categories={categoryNames}
+            orderQty={1}
+            synced
+            onClose={() => setCostsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {pdfViewer && (
         <PDFViewer
