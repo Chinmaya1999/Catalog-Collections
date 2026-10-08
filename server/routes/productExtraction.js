@@ -212,15 +212,14 @@ router.get('/products', async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
     if (req.query.jobId) filter['source.jobId'] = req.query.jobId;
+    // No database sort: ordering the whole catalogue with no supporting index exceeds MongoDB's 32 MB
+    // in-memory sort limit ("Sort exceeded memory limit") and the request fails with a 500.
     const products = await Product.find(filter)
-      .select('-source.rawAiJson -attributes')
-      .sort({ 'source.pageNumber': 1, _id: 1 })
-      // The whole catalogue is sorted here with no supporting index; without disk use MongoDB fails
-      // the query ("Sort exceeded memory limit") once the products outgrow its in-memory sort budget.
-      .allowDiskUse(true)
+      .select('-source.rawAiJson -source.pageImage -attributes')
       .populate('source.jobId', 'originalName status createdAt filePath')
       .populate('vendorCatalogId', 'name pdfFile')
       .lean();
+    products.sort((a, b) => ((a.source?.pageNumber ?? Infinity) - (b.source?.pageNumber ?? Infinity)) || String(a._id).localeCompare(String(b._id)));
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);

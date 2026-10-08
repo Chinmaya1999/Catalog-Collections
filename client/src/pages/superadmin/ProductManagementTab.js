@@ -30,6 +30,7 @@ const ProductManagementTab = () => {
   const [search, setSearch] = useState('');
   const [pdfViewer, setPdfViewer] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [visibleCount, setVisibleCount] = useState(60);
   const [costsOpen, setCostsOpen] = useState(false);
   // Same Costs & profit settings the Shop page's "My pricing" view uses (saved per superadmin).
   const { pricing, setSetting, setCategory } = usePricing(localStorage.getItem('adminToken'));
@@ -94,6 +95,9 @@ const ProductManagementTab = () => {
       return haystacks.some(value => (value || '').toLowerCase().includes(query));
     });
   }, [products, search]);
+
+  // Rendering thousands of photo cards at once freezes the page, so show them in batches.
+  useEffect(() => { setVisibleCount(60); }, [search]);
 
   const openCatalogPage = (product) => {
     const catalog = getCatalog(product);
@@ -292,7 +296,7 @@ const ProductManagementTab = () => {
         <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{search ? `No products match "${search}".` : 'No products found.'}</p></div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredProducts.map(product => {
+          {filteredProducts.slice(0, visibleCount).map(product => {
             const primaryImage = getPrimaryImage(product);
             const skus = getSkus(product);
             const catalog = getCatalog(product);
@@ -327,6 +331,14 @@ const ProductManagementTab = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {filteredProducts.length > visibleCount && (
+        <div className="text-center">
+          <button onClick={() => setVisibleCount(count => count + 60)} className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-gray-200 hover:ring-yellow-400">
+            Show more ({filteredProducts.length - visibleCount} left)
+          </button>
         </div>
       )}
 

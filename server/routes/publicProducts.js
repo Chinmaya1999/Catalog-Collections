@@ -223,6 +223,12 @@ router.get('/admin/catalog', auth, requireSuperadmin, async (req, res) => {
     const products = await Product.find({ isPublished: true })
       .select('+supplierCost name brand categoryName categoryNames badges publishedAt priceFrom colors.name colors.code variants.sku images.path images.isPrimary')
       .lean();
+    // Cards only show the primary photo and one hover photo, so don't ship every image of every product.
+    products.forEach((p) => {
+      const imgs = p.images || [];
+      const primary = imgs.find((i) => i.isPrimary) || imgs[0];
+      p.images = primary ? [primary, ...imgs.filter((i) => i !== primary).slice(0, 1)] : [];
+    });
     products.sort((a, b) => (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)) || String(a._id).localeCompare(String(b._id)));
     res.json({ products });
   } catch (error) {
