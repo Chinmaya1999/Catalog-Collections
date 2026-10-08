@@ -506,6 +506,7 @@ const PriceListTab = () => {
                 <tr>
                   <th className="px-6 py-3 font-semibold">SKU Code</th>
                   <th className="px-6 py-3 font-semibold">Price</th>
+                  <th className="px-6 py-3 font-semibold whitespace-nowrap">Shop price (+65%)</th>
                   <th className="px-6 py-3 font-semibold">Category</th>
                   <th className="px-6 py-3 font-semibold">Description</th>
                   <th className="px-6 py-3 font-semibold">Source</th>
@@ -540,6 +541,9 @@ const PriceListTab = () => {
                       ) : (
                         <PriceText item={item} />
                       )}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap font-bold text-emerald-700">
+                      {item.priceValue === null ? <span className="text-gray-300 font-normal">—</span> : `₹${Math.round(item.priceValue * 1.65).toLocaleString('en-IN')}`}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
                       <span className="text-gray-900">{item.category}</span>

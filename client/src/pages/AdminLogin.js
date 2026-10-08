@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Mail, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
 
 const AdminLogin = () => {
@@ -12,6 +12,7 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     setFormData({
@@ -43,7 +44,7 @@ const AdminLogin = () => {
         window.dispatchEvent(new Event('adminAuthChange'));
         // Redirect based on role
         if (data.admin && data.admin.role === 'superadmin') {
-          navigate('/superadmin/dashboard');
+          navigate(location.state?.from || '/superadmin/dashboard');
         } else {
           navigate('/admin/dashboard');
         }

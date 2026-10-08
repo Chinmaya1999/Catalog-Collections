@@ -341,6 +341,7 @@ const Shop = () => {
   const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest');
   const [photosOnly, setPhotosOnly] = useState(() => searchParams.get('photos') === '1');
   const [page, setPage] = useState(1);
+  const [orderQty, setOrderQty] = useState('100');
   const [loadingMore, setLoadingMore] = useState(false);
   const [view, setViewState] = useState(() => (readStored(VIEW_KEY, 'grid') === 'table' ? 'table' : 'grid'));
 
@@ -502,6 +503,29 @@ const Shop = () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
+  // Costs & profit summary: the selected products if any are ticked, otherwise everything shown.
+  const profitSummary = useMemo(() => {
+    if (!showCosts) return null;
+    const picked = products.filter((p) => proposal.items[p._id]);
+    const pool = picked.length ? picked : products;
+    const rows = pool
+      .map((p) => ({ price: p.priceFrom, cost: costs[p._id]?.cost }))
+      .filter((r) => typeof r.price === 'number' && typeof r.cost === 'number');
+    if (rows.length === 0) return { count: 0, scope: picked.length ? 'selected' : 'shown' };
+    const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
+    const price = sum('price') / rows.length;
+    const cost = sum('cost') / rows.length;
+    const qty = Math.max(0, parseInt(orderQty, 10) || 0);
+    return {
+      count: rows.length,
+      scope: picked.length ? 'selected' : 'shown',
+      price, cost, profit: price - cost,
+      margin: price ? ((price - cost) / price) * 100 : 0,
+      qty,
+      revenue: price * qty, totalCost: cost * qty, totalProfit: (price - cost) * qty
+    };
+  }, [showCosts, products, proposal.items, costs, orderQty]);
+
   const budgetLabel = minPrice || maxPrice ? ` in ${inr(Number(minPrice) || 0)} – ${maxPrice ? inr(Number(maxPrice)) : 'any'}` : '';
   const hasTray = proposal.list.length > 0;
 
@@ -535,6 +559,16 @@ const Shop = () => {
               options={[{ value: 'pricing', label: 'My pricing' }, { value: 'customer', label: 'Customer view' }]}
             />
           )}
+          {!adminToken && (
+            <Link
+              to="/admin/login"
+              state={{ from: '/shop' }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-100 px-4 py-2 text-sm font-semibold text-ink-500 hover:text-brand-dark transition-colors"
+              title="Log in as superadmin to see supplier costs and profit"
+            >
+              My pricing · Costs &amp; profit
+            </Link>
+          )}
         </div>
       </section>
 
@@ -564,6 +598,44 @@ const Shop = () => {
             })}
           </div>
         </div>
+
+
+        {/* Costs & profit (My pricing view) */}
+        {showCosts && profitSummary && (
+          <div className="mt-4 rounded-2xl bg-white p-4 ring-1 ring-black/[0.06] shadow-soft">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-500">Costs &amp; profit</p>
+                <p className="text-xs text-ink-400">
+                  {profitSummary.count
+                    ? `Average of ${profitSummary.count} ${profitSummary.scope} product${profitSummary.count === 1 ? '' : 's'} with a supplier cost`
+                    : `No ${profitSummary.scope} products have a supplier cost yet`}
+                </p>
+              </div>
+              <div>
+                <label htmlFor="shop-qty" className="block text-[11px] font-bold uppercase tracking-[0.12em] text-ink-500">Order qty</label>
+                <input id="shop-qty" type="number" min="0" inputMode="numeric" value={orderQty} onChange={(e) => setOrderQty(e.target.value)} className="mt-1 w-28 rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-dark" />
+              </div>
+            </div>
+            {profitSummary.count > 0 && (
+              <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7 text-sm">
+                {[
+                  ['Customer price / unit', inr(profitSummary.price)],
+                  ['Supplier cost / unit', inr(profitSummary.cost)],
+                  ['Profit / unit', `${inr(profitSummary.profit)} · ${profitSummary.margin.toFixed(0)}%`, true],
+                  [`Revenue × ${profitSummary.qty}`, inr(profitSummary.revenue)],
+                  [`Cost × ${profitSummary.qty}`, inr(profitSummary.totalCost)],
+                  [`Profit × ${profitSummary.qty}`, inr(profitSummary.totalProfit), true]
+                ].map(([label, value, hi]) => (
+                  <div key={label} className="min-w-0">
+                    <dt className="text-[11px] text-ink-400">{label}</dt>
+                    <dd className={`font-display font-bold tabular-nums ${hi ? 'text-amber-600' : 'text-brand-dark'}`}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        )}
 
         {/* Categories */}
         {filterOptions.categories.length > 0 && (

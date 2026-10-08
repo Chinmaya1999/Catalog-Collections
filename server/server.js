@@ -103,6 +103,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => {
   console.log('✅ MongoDB connected successfully');
   console.log('Connected to:', process.env.MONGODB_URI.replace(/\/\/.*@/, '//<credentials>@'));
+  require('./services/shopPricing').syncShopPrices()
+    .then((r) => console.log(`Shop prices synced from price list: ${r.updated} updated, ${r.matched} matched`))
+    .catch((e) => console.error('Shop price sync failed:', e.message));
 })
 .catch((err) => {
   console.error('❌ MongoDB connection error:', err.message);

@@ -213,11 +213,14 @@ router.get('/products', async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.jobId) filter['source.jobId'] = req.query.jobId;
     const products = await Product.find(filter)
+      .select('-source.rawAiJson -attributes')
       .sort({ 'source.pageNumber': 1 })
       .populate('source.jobId', 'originalName status createdAt filePath')
-      .populate('vendorCatalogId', 'name pdfFile');
+      .populate('vendorCatalogId', 'name pdfFile')
+      .lean();
     res.json(products);
   } catch (error) {
+    console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products' });
   }
 });

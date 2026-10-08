@@ -7,6 +7,7 @@ const multer = require('multer');
 const { PriceListFile, PriceListItem } = require('../models/PriceList');
 const { parsePriceListFile, normalizeSku, categoryFromFileName } = require('../services/priceListParser');
 const { savePriceList, refreshFileCounts } = require('../services/priceListStore');
+const { syncShopPrices, SHOP_MARKUP_PERCENT } = require('../services/shopPricing');
 
 const router = express.Router();
 
@@ -96,7 +97,7 @@ router.get('/meta', auth, async (req, res) => {
       PriceListFile.find().sort({ createdAt: -1 }),
       PriceListItem.countDocuments()
     ]);
-    res.json({ categories: categories.map((c) => ({ name: c._id, count: c.count })), files, total });
+    res.json({ categories: categories.map((c) => ({ name: c._id, count: c.count })), files, total, markupPercent: SHOP_MARKUP_PERCENT });
   } catch (error) {
     console.error('Error fetching price list meta:', error);
     res.status(500).json({ message: 'Error fetching price list info' });
@@ -148,7 +149,8 @@ router.post(
       }
     }
 
-    res.status(201).json({ message: 'Upload processed', results });
+    const shop = await syncShopPrices().catch((e) => { console.error('Shop price sync failed:', e); return null; });
+    res.status(201).json({ message: 'Upload processed', results, shop });
   }
 );
 
@@ -167,6 +169,7 @@ router.put('/items/:id', auth, async (req, res) => {
 
     const item = await PriceListItem.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!item) return res.status(404).json({ message: 'SKU not found' });
+    if (item.priceValue !== null) await syncShopPrices([item.skuKey]).catch((e) => console.error('Shop price sync failed:', e));
     res.json({ message: 'Price updated', item });
   } catch (error) {
     console.error('Error updating price list item:', error);
@@ -200,6 +203,16 @@ router.delete('/files/:id', auth, async (req, res) => {
   } catch (error) {
     console.error('Error deleting price list file:', error);
     res.status(500).json({ message: 'Error deleting price list' });
+  }
+});
+
+// Re-apply every price-list price (+65%) to the matching shop products
+router.post('/sync-shop', auth, async (req, res) => {
+  try {
+    res.json({ message: 'Shop prices updated', ...(await syncShopPrices()) });
+  } catch (error) {
+    console.error('Error syncing shop prices:', error);
+    res.status(500).json({ message: 'Error updating shop prices' });
   }
 });
 
