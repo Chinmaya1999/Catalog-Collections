@@ -1,6 +1,7 @@
 const express = require('express');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const PricingSettings = require('../models/PricingSettings');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -202,6 +203,58 @@ router.get('/costs', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching product costs:', error);
     res.status(500).json({ message: 'Error fetching costs' });
+  }
+});
+
+const requireSuperadmin = (req, res, next) => {
+  if (!req.admin || req.admin.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Superadmin access required' });
+  }
+  next();
+};
+
+// Admin-only: every published product with its supplier cost, so the Shop's "My pricing" view can
+// price, filter, sort and profit-check the whole catalogue in the browser (the price depends on
+// settings the server doesn't know about). Descriptions are left out to keep the payload small.
+router.get('/admin/catalog', auth, requireSuperadmin, async (req, res) => {
+  try {
+    const products = await Product.find({ isPublished: true })
+      .select('-source -attributes -description +supplierCost +supplierCode')
+      .sort({ publishedAt: -1, _id: 1 })
+      .lean();
+    res.json({ products });
+  } catch (error) {
+    console.error('Error fetching admin catalog:', error);
+    res.status(500).json({ message: 'Error fetching catalog' });
+  }
+});
+
+// Admin-only: the saved "Costs & profit" settings, shared across the superadmin's devices.
+router.get('/admin/pricing', auth, requireSuperadmin, async (req, res) => {
+  try {
+    const doc = await PricingSettings.findOne({ admin: req.admin._id });
+    res.json({ data: doc ? doc.data : null });
+  } catch (error) {
+    console.error('Error fetching pricing settings:', error);
+    res.status(500).json({ message: 'Error fetching pricing settings' });
+  }
+});
+
+router.put('/admin/pricing', auth, requireSuperadmin, async (req, res) => {
+  try {
+    const data = req.body && req.body.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return res.status(400).json({ message: 'Invalid pricing settings' });
+    }
+    await PricingSettings.findOneAndUpdate(
+      { admin: req.admin._id },
+      { data, updatedAt: Date.now() },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error saving pricing settings:', error);
+    res.status(500).json({ message: 'Error saving pricing settings' });
   }
 });
 

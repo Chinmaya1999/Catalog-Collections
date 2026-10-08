@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 
 const PROPOSAL_KEY = 'catlog_proposal';
 
-const empty = { items: {}, customer: '' };
+const empty = { items: {}, customer: '', note: '', totals: true };
 
 const load = () => {
   try {
@@ -76,9 +76,14 @@ export const useProposal = () => {
   }), [update]);
 
   const setCustomer = useCallback((customer) => update((prev) => ({ ...prev, customer })), [update]);
+  const setNote = useCallback((note) => update((prev) => ({ ...prev, note })), [update]);
+  const setTotals = useCallback((totals) => update((prev) => ({ ...prev, totals })), [update]);
   const clear = useCallback(() => update((prev) => ({ ...prev, items: {} })), [update]);
 
   const list = useMemo(() => Object.entries(state.items).map(([id, item]) => ({ id, ...item })), [state.items]);
 
-  return { items: state.items, list, customer: state.customer, toggle, addMany, setQty, remove, setCustomer, clear };
+  return {
+    items: state.items, list, customer: state.customer, note: state.note, totals: state.totals,
+    toggle, addMany, setQty, remove, setCustomer, setNote, setTotals, clear
+  };
 };
