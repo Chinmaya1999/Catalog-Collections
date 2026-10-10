@@ -37,12 +37,14 @@ import CatalogRequestsTab from './superadmin/CatalogRequestsTab';
 import AnnouncementsTab from './superadmin/AnnouncementsTab';
 import ProductManagementTab from './superadmin/ProductManagementTab';
 import PriceListTab from './superadmin/PriceListTab';
+import ShopPriceListTab from './superadmin/ShopPriceListTab';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
   { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
   { id: 'price-list', label: 'Price List', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
+  { id: 'shop-prices', label: 'Shop Price List', description: 'Cost and shop price of every product in the Shop', icon: IndianRupee },
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'products', label: 'Shop Products', description: 'Manage every product shown in the public Shop', icon: Package },
@@ -1210,6 +1212,8 @@ const SuperadminDashboard = () => {
 
         {/* Price List Tab */}
         {activeTab === 'price-list' && <PriceListTab />}
+
+        {activeTab === 'shop-prices' && <ShopPriceListTab />}
 
         {/* Announcements Tab */}
         {activeTab === 'announcements' && <AnnouncementsTab />}
