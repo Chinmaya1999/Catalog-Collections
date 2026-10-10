@@ -3,7 +3,9 @@ const { PriceListItem } = require('../models/PriceList');
 
 // Shop price = price-list price + 80%.
 const SHOP_MARKUP_PERCENT = 80;
-const shopPriceFor = (priceValue) => Math.round(priceValue * (1 + SHOP_MARKUP_PERCENT / 100));
+// Cheap items (shop price under the minimum) are lifted to a floor of ₹250.
+const SHOP_MIN_PRICE = 250;
+const shopPriceFor = (priceValue) => Math.max(SHOP_MIN_PRICE, Math.round(priceValue * (1 + SHOP_MARKUP_PERCENT / 100)));
 
 const skuKeyOf = (sku) => String(sku || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
