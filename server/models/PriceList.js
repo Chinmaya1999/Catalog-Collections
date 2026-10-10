@@ -21,6 +21,8 @@ const priceListItemSchema = new mongoose.Schema({
   price: { type: String, default: '' },
   priceValue: { type: Number, default: null },
   plusGst: { type: Boolean, default: false },
+  // Hand-set Shop price. When present it replaces the automatic list price + markup.
+  shopPrice: { type: Number, default: null },
   description: { type: String, default: '' },
   category: { type: String, required: true, index: true },
   section: { type: String, default: '' },

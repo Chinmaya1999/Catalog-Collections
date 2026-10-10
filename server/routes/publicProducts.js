@@ -2,6 +2,8 @@ const express = require('express');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const PricingSettings = require('../models/PricingSettings');
+const { PriceListItem } = require('../models/PriceList');
+const { syncShopPrices } = require('../services/shopPricing');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -234,6 +236,58 @@ router.get('/admin/catalog', auth, requireSuperadmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching admin catalog:', error);
     res.status(500).json({ message: 'Error fetching catalog', detail: error.message });
+  }
+});
+
+// Admin-only: hand-edit a product's supplier cost and/or shop price (Shop Price List screen).
+// Price-list products are re-priced from the price list on every sync, so for those the edit is
+// stored on the price-list row (cost -> list price, shop price -> override) instead.
+router.patch('/admin/:id/pricing', auth, requireSuperadmin, async (req, res) => {
+  try {
+    const parse = (v) => {
+      if (v === undefined) return undefined;
+      if (v === null || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? Math.round(n) : NaN;
+    };
+    const cost = parse(req.body.cost);
+    const price = parse(req.body.price);
+    if (Number.isNaN(cost) || Number.isNaN(price)) return res.status(400).json({ message: 'Enter a valid amount' });
+
+    const product = await Product.findById(req.params.id).select('+supplierCost');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const keys = product.variants.map((v) => String(v.sku || '').toUpperCase().replace(/[^A-Z0-9]/g, '')).filter(Boolean);
+    const listed = keys.length ? await PriceListItem.find({ skuKey: { $in: keys } }) : [];
+
+    if (listed.length) {
+      for (const row of listed) {
+        if (typeof cost === 'number') { row.priceValue = cost; row.price = String(cost); }
+        if (price !== undefined) row.shopPrice = price;
+        row.updatedAt = new Date();
+        await row.save();
+      }
+      await syncShopPrices(listed.map((r) => r.skuKey));
+    } else {
+      if (cost !== undefined) product.supplierCost = cost;
+      if (typeof price === 'number') {
+        // Keep the variants' price relationships: scale them all by new / current lowest price.
+        const current = product.variants.map((v) => (typeof v.sellingPrice === 'number' ? v.sellingPrice : v.mrp)).filter((p) => typeof p === 'number');
+        const lowest = current.length ? Math.min(...current) : 0;
+        product.variants.forEach((v) => {
+          const base = typeof v.sellingPrice === 'number' ? v.sellingPrice : v.mrp;
+          v.sellingPrice = lowest > 0 && typeof base === 'number' ? Math.round((base * price) / lowest) : price;
+        });
+        if (!product.variants.length) product.variants.push({ sellingPrice: price });
+      }
+      await product.save();
+    }
+
+    const fresh = await Product.findById(product._id).select('+supplierCost priceFrom');
+    res.json({ cost: fresh.supplierCost, price: fresh.priceFrom });
+  } catch (error) {
+    console.error('Error updating product pricing:', error);
+    res.status(500).json({ message: 'Error updating pricing' });
   }
 });
 

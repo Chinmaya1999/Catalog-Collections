@@ -5,7 +5,9 @@ const { PriceListItem } = require('../models/PriceList');
 const SHOP_MARKUP_PERCENT = 80;
 // Cheap items (shop price under the minimum) are lifted to a floor of ₹250.
 const SHOP_MIN_PRICE = 250;
-const shopPriceFor = (priceValue) => Math.max(SHOP_MIN_PRICE, Math.round(priceValue * (1 + SHOP_MARKUP_PERCENT / 100)));
+const shopPriceFor = (priceValue, override = null) => (
+  typeof override === 'number' ? override : Math.max(SHOP_MIN_PRICE, Math.round(priceValue * (1 + SHOP_MARKUP_PERCENT / 100)))
+);
 
 const skuKeyOf = (sku) => String(sku || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -16,10 +18,10 @@ const skuKeyOf = (sku) => String(sku || '').toUpperCase().replace(/[^A-Z0-9]/g, 
 const syncShopPrices = async (skuKeys) => {
   const filter = { priceValue: { $ne: null } };
   if (skuKeys && skuKeys.length) filter.skuKey = { $in: skuKeys };
-  const rows = await PriceListItem.find(filter, 'skuKey priceValue');
+  const rows = await PriceListItem.find(filter, 'skuKey priceValue shopPrice');
   if (rows.length === 0) return { matched: 0, updated: 0 };
 
-  const listPrice = new Map(rows.map((r) => [r.skuKey, r.priceValue]));
+  const listPrice = new Map(rows.map((r) => [r.skuKey, { base: r.priceValue, override: r.shopPrice }]));
   const keys = [...listPrice.keys()];
   // Product SKUs are stored as typed ("HGS-K301"), so match on the normalised form in memory.
   // Only products whose variant SKU could match, streamed one at a time to keep memory flat.
@@ -33,8 +35,8 @@ const syncShopPrices = async (skuKeys) => {
     for (const variant of product.variants) {
       const key = skuKeyOf(variant.sku);
       if (!listPrice.has(key)) continue;
-      const base = listPrice.get(key);
-      const shop = shopPriceFor(base);
+      const { base, override } = listPrice.get(key);
+      const shop = shopPriceFor(base, override);
       cost = cost === null ? base : Math.min(cost, base);
       if (variant.sellingPrice !== shop) { variant.sellingPrice = shop; changed = true; }
     }

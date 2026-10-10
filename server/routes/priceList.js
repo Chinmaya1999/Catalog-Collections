@@ -165,11 +165,18 @@ router.put('/items/:id', auth, async (req, res) => {
       update.priceValue = num ? Number(num[0].replace(/,/g, '')) : null;
       update.plusGst = /\+\s*g[sd]t/i.test(text);
     }
+    if (req.body.shopPrice !== undefined) {
+      const raw = req.body.shopPrice;
+      const n = Number(raw);
+      if (raw === null || raw === '') update.shopPrice = null;
+      else if (!Number.isFinite(n) || n < 0) return res.status(400).json({ message: 'Invalid shop price' });
+      else update.shopPrice = Math.round(n);
+    }
     if (req.body.description !== undefined) update.description = String(req.body.description).trim();
 
     const item = await PriceListItem.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!item) return res.status(404).json({ message: 'SKU not found' });
-    if (item.priceValue !== null) await syncShopPrices([item.skuKey]).catch((e) => console.error('Shop price sync failed:', e));
+    if (item.priceValue !== null || item.shopPrice !== null) await syncShopPrices([item.skuKey]).catch((e) => console.error('Shop price sync failed:', e));
     res.json({ message: 'Price updated', item });
   } catch (error) {
     console.error('Error updating price list item:', error);

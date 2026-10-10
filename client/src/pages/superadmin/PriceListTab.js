@@ -67,6 +67,8 @@ const PriceListTab = () => {
 
   const [editingId, setEditingId] = useState(null);
   const [editPrice, setEditPrice] = useState('');
+  const [editingShopId, setEditingShopId] = useState(null);
+  const [editShopPrice, setEditShopPrice] = useState('');
   const [showFiles, setShowFiles] = useState(false);
 
   const fetchMeta = useCallback(async () => {
@@ -180,6 +182,25 @@ const PriceListTab = () => {
       }
     } catch (error) {
       console.error('Error updating price:', error);
+    }
+  };
+
+  const saveShopPrice = async (id) => {
+    try {
+      const res = await fetch(`${API_ENDPOINTS.priceList}/items/${id}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopPrice: editShopPrice })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setItems((prev) => prev.map((i) => (i._id === id ? { ...i, ...data.item } : i)));
+        setEditingShopId(null);
+      } else {
+        alert(`Error: ${data.message || 'Failed to update shop price'}`);
+      }
+    } catch (error) {
+      console.error('Error updating shop price:', error);
     }
   };
 
@@ -543,7 +564,44 @@ const PriceListTab = () => {
                       )}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap font-bold text-emerald-700">
-                      {item.priceValue === null ? <span className="text-gray-300 font-normal">—</span> : `₹${Math.max(250, Math.round(item.priceValue * 1.80)).toLocaleString('en-IN')}`}
+                      {item.priceValue === null ? (
+                        <span className="text-gray-300 font-normal">—</span>
+                      ) : editingShopId === item._id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            type="number"
+                            min="0"
+                            value={editShopPrice}
+                            onChange={(e) => setEditShopPrice(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveShopPrice(item._id);
+                              if (e.key === 'Escape') setEditingShopId(null);
+                            }}
+                            placeholder="blank = auto"
+                            className="w-28 px-2 py-1 border-2 border-yellow-300 rounded-lg text-sm font-normal text-gray-900"
+                          />
+                          <button onClick={() => saveShopPrice(item._id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check size={16} /></button>
+                          <button onClick={() => setEditingShopId(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><X size={16} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>
+                            ₹{(typeof item.shopPrice === 'number' ? item.shopPrice : Math.max(250, Math.round(item.priceValue * 1.80))).toLocaleString('en-IN')}
+                          </span>
+                          {typeof item.shopPrice === 'number' && <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">custom</span>}
+                          <button
+                            onClick={() => {
+                              setEditingShopId(item._id);
+                              setEditShopPrice(typeof item.shopPrice === 'number' ? String(item.shopPrice) : '');
+                            }}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit shop price (leave blank to go back to automatic)"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap">
                       <span className="text-gray-900">{item.category}</span>

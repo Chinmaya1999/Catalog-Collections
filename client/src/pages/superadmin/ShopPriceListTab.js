@@ -1,11 +1,60 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Loader2, ChevronLeft, ChevronRight, Edit, Check, X } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
 
 const PAGE_SIZE = 50;
 
 const money = (n) => (typeof n === 'number' ? `₹${n.toLocaleString('en-IN')}` : '—');
 const primaryImage = (p) => (p.images?.find((i) => i.isPrimary) || p.images?.[0])?.path || null;
+
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('adminToken')}` });
+
+// A rupee amount that turns into an input when the pencil is clicked.
+const EditableMoney = ({ value, bold, onSave }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const commit = async () => {
+    setSaving(true);
+    const ok = await onSave(draft);
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <input
+          autoFocus
+          type="number"
+          min="0"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          className="w-24 px-2 py-1 border-2 border-yellow-300 rounded-lg text-sm text-right"
+        />
+        <button disabled={saving} onClick={commit} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check size={16} /></button>
+        <button onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><X size={16} /></button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className={bold ? 'font-bold text-gray-900' : 'text-gray-500'}>{money(value)}</span>
+      <button
+        onClick={() => { setDraft(typeof value === 'number' ? String(value) : ''); setEditing(true); }}
+        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+        title="Edit"
+      >
+        <Edit size={14} />
+      </button>
+    </div>
+  );
+};
 
 // Every published Shop product with its supplier cost and current shop price.
 const ShopPriceListTab = () => {
@@ -42,6 +91,23 @@ const ShopPriceListTab = () => {
   }, [products, search, category]);
 
   useEffect(() => { setPage(1); }, [search, category]);
+
+  const savePricing = async (id, body) => {
+    try {
+      const res = await fetch(`${API_ENDPOINTS.products}/admin/${id}/pricing`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.message || 'Could not save'); return false; }
+      setProducts((prev) => prev.map((p) => (p._id === id ? { ...p, supplierCost: data.cost, priceFrom: data.price } : p)));
+      return true;
+    } catch (e) {
+      alert('Could not save');
+      return false;
+    }
+  };
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -102,8 +168,12 @@ const ShopPriceListTab = () => {
                   </td>
                   <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{p.variants?.[0]?.sku || '—'}</td>
                   <td className="px-4 py-2.5 text-gray-600">{p.categoryName || '—'}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-500">{money(p.supplierCost)}</td>
-                  <td className="px-4 py-2.5 text-right font-bold text-gray-900">{money(p.priceFrom)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <EditableMoney value={p.supplierCost} onSave={(v) => savePricing(p._id, { cost: v })} />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <EditableMoney bold value={p.priceFrom} onSave={(v) => savePricing(p._id, { price: v })} />
+                  </td>
                 </tr>
               );
             })}
