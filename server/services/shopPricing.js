@@ -1,14 +1,14 @@
 const Product = require('../models/Product');
 const { PriceListItem } = require('../models/PriceList');
 
-// Shop price = price-list price + 65%.
-const SHOP_MARKUP_PERCENT = 65;
+// Shop price = price-list price + 80%.
+const SHOP_MARKUP_PERCENT = 80;
 const shopPriceFor = (priceValue) => Math.round(priceValue * (1 + SHOP_MARKUP_PERCENT / 100));
 
 const skuKeyOf = (sku) => String(sku || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // Push price-list prices into the shop. A product variant whose SKU code equals a price-list SKU
-// code gets sellingPrice = list price + 65%; the list price itself is kept as the product's
+// code gets sellingPrice = list price + 80%; the list price itself is kept as the product's
 // supplierCost so the superadmin "My pricing" view shows the real profit. Pass skuKeys to limit
 // the sync to those codes, or nothing to sync every priced row.
 const syncShopPrices = async (skuKeys) => {

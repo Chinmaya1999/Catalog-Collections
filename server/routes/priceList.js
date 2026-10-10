@@ -206,7 +206,7 @@ router.delete('/files/:id', auth, async (req, res) => {
   }
 });
 
-// Re-apply every price-list price (+65%) to the matching shop products
+// Re-apply every price-list price (+80%) to the matching shop products
 router.post('/sync-shop', auth, async (req, res) => {
   try {
     res.json({ message: 'Shop prices updated', ...(await syncShopPrices()) });
