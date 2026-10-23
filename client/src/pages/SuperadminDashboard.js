@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
   { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
   { id: 'price-list', label: 'Price List', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
-  { id: 'shop-prices', label: 'Shop Price List', description: 'Cost and shop price of every product in the Shop', icon: IndianRupee },
+  { id: 'shop-prices', label: 'Shop Price List', description: 'Shop products and imported PDF price lists', icon: IndianRupee },
   { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
   { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
   { id: 'products', label: 'Shop Products', description: 'Manage every product shown in the public Shop', icon: Package },

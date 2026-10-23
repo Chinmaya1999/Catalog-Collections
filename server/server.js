@@ -126,6 +126,7 @@ const announcementRoutes = require('./routes/announcement');
 const productExtractionRoutes = require('./routes/productExtraction');
 const publicProductsRoutes = require('./routes/publicProducts');
 const priceListRoutes = require('./routes/priceList');
+const shopPriceImportRoutes = require('./routes/shopPriceImport');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -140,6 +141,7 @@ app.use('/api/announcement', announcementRoutes);
 app.use('/api/product-extraction', productExtractionRoutes);
 app.use('/api/products', publicProductsRoutes);
 app.use('/api/price-list', priceListRoutes);
+app.use('/api/shop-price-import', shopPriceImportRoutes);
 
 // ==================== Health Check ====================
 app.get('/api/health', (req, res) => {

@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   products: `${API_BASE_URL}/api/products`,
   announcement: `${API_BASE_URL}/api/announcement`,
   priceList: `${API_BASE_URL}/api/price-list`,
+  shopPriceImport: `${API_BASE_URL}/api/shop-price-import`,
   health: `${API_BASE_URL}/api/health`
 };
 

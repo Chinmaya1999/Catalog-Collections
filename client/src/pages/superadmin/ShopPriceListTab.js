@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Loader2, ChevronLeft, ChevronRight, Edit, Check, X } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
+import ShopPriceImportSection from './ShopPriceImportSection';
 
 const PAGE_SIZE = 50;
 
@@ -116,7 +117,8 @@ const ShopPriceListTab = () => {
   if (error) return <div className="bg-red-50 text-red-700 rounded-xl p-4">{error}</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <ShopPriceImportSection />
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
