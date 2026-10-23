@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PDFParse } = require('pdf-parse');
+const { getPdfPageLayouts } = require('./extraction/imagePositions');
 
 const normalizeHeader = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const parseAmount = (value) => {
@@ -89,24 +90,51 @@ const uniqueItems = (items) => {
 
 const parseShopPriceImportText = (text) => uniqueItems(parseShopPriceImportPageText(text));
 
-const imageExtension = (data) => {
-  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'jpg';
-  if (data.length >= 8 && data.slice(0, 8).toString() === '\x89PNG\r\n\x1a\n') return 'png';
-  if (data.length >= 12 && data.slice(0, 4).toString() === 'RIFF' && data.slice(8, 12).toString() === 'WEBP') return 'webp';
-  return 'png';
+const normalizeLabel = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+const assignPageImages = async (items, layout, pageNumber, imageDirectory, publicImageDirectory) => {
+  if (!layout || items.length === 0) return 0;
+  const rows = items.map((item) => ({
+    item,
+    text: layout.texts.find((entry) => normalizeLabel(entry.text) === normalizeLabel(item.modelName))
+  }));
+  const locatedRows = rows
+    .filter((row) => row.text)
+    .sort((a, b) => a.text.centerY - b.text.centerY);
+  let assigned = 0;
+
+  for (const [index, row] of locatedRows.entries()) {
+    const previous = locatedRows[index - 1];
+    const next = locatedRows[index + 1];
+    const lowerBound = previous ? (previous.text.centerY + row.text.centerY) / 2 : -Infinity;
+    const upperBound = next ? (row.text.centerY + next.text.centerY) / 2 : Infinity;
+    const image = layout.images
+      .filter((candidate) => candidate.centerY >= lowerBound && candidate.centerY < upperBound)
+      .sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
+
+    if (!image || !fs.existsSync(image.filePath)) continue;
+    await fs.promises.mkdir(imageDirectory, { recursive: true });
+    const imageName = `page-${pageNumber}-item-${items.indexOf(row.item) + 1}.jpg`;
+    await fs.promises.copyFile(image.filePath, path.join(imageDirectory, imageName));
+    row.item.picture = `${publicImageDirectory}/${imageName}`;
+    assigned += 1;
+  }
+
+  return assigned;
 };
 
 const parseShopPriceImportPdf = async (filePath, imageDirectory, publicImageDirectory) => {
   const parser = new PDFParse({ data: fs.readFileSync(filePath) });
+  const imageWorkDir = path.join(imageDirectory, 'extracted');
   try {
     const textResult = await parser.getText();
     const pageTexts = textResult.pages?.length ? textResult.pages.map((page) => page.text) : [textResult.text || ''];
     const items = [];
     const warnings = [];
-    let imageResult = null;
+    let layouts = [];
 
     try {
-      imageResult = await parser.getImage({ imageThreshold: 120, imageDataUrl: false });
+      layouts = await getPdfPageLayouts(filePath, imageWorkDir);
     } catch (error) {
       console.error('Could not extract images from Shop Price List PDF:', error);
       warnings.push('PDF pictures could not be extracted; existing catalog pictures will be matched by model where possible.');
@@ -115,28 +143,23 @@ const parseShopPriceImportPdf = async (filePath, imageDirectory, publicImageDire
     for (const [pageIndex, pageText] of pageTexts.entries()) {
       const pageItems = parseShopPriceImportPageText(pageText);
       const pageNumber = pageIndex + 1;
-      const pageImages = imageResult?.pages.find((page) => page.pageNumber === pageNumber)?.images || [];
-
-      if (pageItems.length > 0 && pageImages.length === pageItems.length) {
-        await fs.promises.mkdir(imageDirectory, { recursive: true });
-        for (const [itemIndex, item] of pageItems.entries()) {
-          const imageData = Buffer.from(pageImages[itemIndex].data);
-          const extension = imageExtension(imageData);
-          const imageName = `page-${pageNumber}-item-${itemIndex + 1}.${extension}`;
-          await fs.promises.writeFile(path.join(imageDirectory, imageName), imageData);
-          item.picture = `${publicImageDirectory}/${imageName}`;
-        }
-      } else if (pageItems.length > 0 && pageImages.length > 0) {
-        warnings.push(`Pictures on PDF page ${pageNumber} could not be matched reliably to its product rows.`);
-      }
+      const layout = layouts.find((page) => page.pageNumber === pageNumber);
+      await assignPageImages(pageItems, layout, pageNumber, imageDirectory, publicImageDirectory);
 
       items.push(...pageItems);
     }
 
+    const missingPictures = items.filter((item) => !item.picture).length;
+    if (missingPictures > 0) {
+      warnings.push(`${missingPictures} products had no reliably matched PDF picture.`);
+    }
     return { items: uniqueItems(items), warnings: [...new Set(warnings)] };
   } finally {
-    await parser.destroy();
+    await Promise.all([
+      parser.destroy(),
+      fs.promises.rm(imageWorkDir, { recursive: true, force: true })
+    ]);
   }
 };
 
-module.exports = { parseShopPriceImportPdf, parseShopPriceImportText };
+module.exports = { assignPageImages, parseShopPriceImportPdf, parseShopPriceImportText };

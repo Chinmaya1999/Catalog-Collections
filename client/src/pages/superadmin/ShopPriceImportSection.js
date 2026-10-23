@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Search, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Upload } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
 
 const PAGE_SIZE = 50;
@@ -28,6 +28,8 @@ const ShopPriceImportSection = () => {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [files, setFiles] = useState([]);
+  const [revertingFileId, setRevertingFileId] = useState('');
   const fileInputRef = useRef(null);
 
   const fetchItems = useCallback(async () => {
@@ -51,9 +53,24 @@ const ShopPriceImportSection = () => {
     }
   }, [page, search]);
 
+  const fetchFiles = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.shopPriceImport}/files`, {
+        headers: authHeaders()
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.message || 'Could not load uploaded PDFs');
+      setFiles(data.files || []);
+    } catch (fetchError) {
+      console.error('Error fetching imported Shop Price List files:', fetchError);
+      setError(fetchError.message || 'Could not load uploaded PDFs');
+    }
+  }, []);
+
   useEffect(() => {
     fetchItems();
-  }, [fetchItems, refresh]);
+    fetchFiles();
+  }, [fetchItems, fetchFiles, refresh]);
 
   const uploadPdf = async (event) => {
     event.preventDefault();
@@ -81,7 +98,7 @@ const ShopPriceImportSection = () => {
       const data = await readResponse(response);
       if (!response.ok) throw new Error(data.message || 'PDF import failed');
       const warnings = data.warnings?.length ? ` ${data.warnings.join(' ')}` : '';
-      setNotice(`${data.imported} items imported from ${data.fileName}. Our price is 70% of the PDF price.${warnings}`);
+      setNotice(`${data.imported} items imported from ${data.fileName}. Our price is the PDF price plus 70%.${warnings}`);
       fileInputRef.current.value = '';
       setPage(1);
       setRefresh((value) => value + 1);
@@ -93,6 +110,31 @@ const ShopPriceImportSection = () => {
     }
   };
 
+  const revertImport = async (file) => {
+    if (!window.confirm(
+      `Revert "${file.originalName}"? This removes its ${file.itemCount} imported rows and extracted pictures.`
+    )) return;
+
+    setRevertingFileId(file._id);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch(`${API_ENDPOINTS.shopPriceImport}/files/${file._id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.message || 'Could not revert this PDF import');
+      setNotice(`${data.fileName} reverted. ${data.deletedItems} imported rows removed.`);
+      setRefresh((value) => value + 1);
+    } catch (revertError) {
+      console.error('Error reverting Shop Price List PDF import:', revertError);
+      setError(revertError.message || 'Could not revert this PDF import');
+    } finally {
+      setRevertingFileId('');
+    }
+  };
+
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -101,7 +143,7 @@ const ShopPriceImportSection = () => {
         <div>
           <h2 className="text-lg font-bold text-gray-900">Import PDF price list</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Imported rows are kept separate from shop products. Our price is calculated as 70% of the PDF price.
+            Imported rows are kept separate from shop products. Our price is the PDF price plus a 70% increase.
           </p>
         </div>
         <form onSubmit={uploadPdf} className="flex flex-col gap-2 sm:flex-row">
@@ -126,6 +168,33 @@ const ShopPriceImportSection = () => {
       {notice && <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</p>}
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
+      {files.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-gray-200 p-3">
+          <h3 className="text-sm font-semibold text-gray-800">Uploaded PDFs — revert an import</h3>
+          {files.map((file) => (
+            <div key={file._id} className="flex flex-col gap-2 rounded-lg bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-800">{file.originalName}</p>
+                <p className="text-xs text-gray-500">
+                  {file.itemCount} items · {new Date(file.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={Boolean(revertingFileId)}
+                onClick={() => revertImport(file)}
+                className="inline-flex items-center justify-center gap-1 self-start rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
+              >
+                {revertingFileId === file._id
+                  ? <Loader2 size={15} className="animate-spin" />
+                  : <Trash2 size={15} />}
+                Revert import
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -147,7 +216,7 @@ const ShopPriceImportSection = () => {
               <th className="px-4 py-3 font-semibold">Picture</th>
               <th className="px-4 py-3 font-semibold">Model Name/No.</th>
               <th className="px-4 py-3 text-right font-semibold">PDF price</th>
-              <th className="px-4 py-3 text-right font-semibold">Our price (70%)</th>
+              <th className="px-4 py-3 text-right font-semibold">Our price (+70%)</th>
               <th className="px-4 py-3 font-semibold">HSN Code</th>
               <th className="px-4 py-3 text-right font-semibold">GST%</th>
             </tr>

@@ -6,10 +6,10 @@ const auth = require('../middleware/auth');
 const Product = require('../models/Product');
 const { ShopPriceImportFile, ShopPriceImportItem } = require('../models/ShopPriceImport');
 const { parseShopPriceImportPdf } = require('../services/shopPriceImportParser');
+const { OUR_PRICE_HIKE_PERCENT, ourPriceFor } = require('../services/shopPriceImportPricing');
 
 const router = express.Router();
 const IMPORT_DIR = path.join(__dirname, '../uploads/shop-price-lists');
-const OUR_PRICE_PERCENT = 70;
 
 fs.mkdirSync(IMPORT_DIR, { recursive: true });
 
@@ -36,7 +36,19 @@ const superadminOnly = (req, res, next) => {
 const normalizeModel = (value) => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const primaryImage = (product) => (product.images?.find((image) => image.isPrimary) || product.images?.[0])?.path || '';
-const ourPriceFor = (pdfPrice) => Math.round((pdfPrice * OUR_PRICE_PERCENT / 100 + Number.EPSILON) * 100) / 100;
+
+router.get('/files', auth, superadminOnly, async (req, res) => {
+  try {
+    const files = await ShopPriceImportFile.find()
+      .select('originalName itemCount createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ files });
+  } catch (error) {
+    console.error('Error fetching imported Shop Price List files:', error);
+    res.status(500).json({ message: 'Could not load imported price list files' });
+  }
+});
 
 router.get('/items', auth, superadminOnly, async (req, res) => {
   try {
@@ -100,11 +112,45 @@ router.get('/items', auth, superadminOnly, async (req, res) => {
       total,
       page,
       pages: Math.max(1, Math.ceil(total / limit)),
-      ourPricePercent: OUR_PRICE_PERCENT
+      ourPriceHikePercent: OUR_PRICE_HIKE_PERCENT
     });
   } catch (error) {
     console.error('Error fetching imported shop price items:', error);
     res.status(500).json({ message: 'Could not load imported shop price items' });
+  }
+});
+
+router.delete('/files/:id', auth, superadminOnly, async (req, res) => {
+  try {
+    if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid uploaded PDF ID' });
+    }
+    const file = await ShopPriceImportFile.findById(req.params.id);
+    if (!file) return res.status(404).json({ message: 'Uploaded PDF not found' });
+    if (!/^\d+-\d+\.pdf$/i.test(file.fileName) || path.basename(file.fileName) !== file.fileName) {
+      console.error('Refusing to remove an unexpected Shop Price List file path:', file.fileName);
+      return res.status(500).json({ message: 'Could not safely remove this uploaded PDF' });
+    }
+
+    const { deletedCount } = await ShopPriceImportItem.deleteMany({ sourceFile: file._id });
+    await ShopPriceImportFile.findByIdAndDelete(file._id);
+    const imageDirectory = path.join(IMPORT_DIR, 'images', path.parse(file.fileName).name);
+    const cleanupErrors = await Promise.allSettled([
+      fs.promises.rm(path.join(IMPORT_DIR, file.fileName), { force: true }),
+      fs.promises.rm(imageDirectory, { recursive: true, force: true })
+    ]);
+    cleanupErrors.forEach((result) => {
+      if (result.status === 'rejected') console.error('Could not clean up reverted Shop Price List upload:', result.reason);
+    });
+
+    return res.json({
+      message: 'PDF import reverted',
+      fileName: file.originalName,
+      deletedItems: deletedCount
+    });
+  } catch (error) {
+    console.error('Error reverting imported Shop Price List PDF:', error);
+    return res.status(500).json({ message: 'Could not revert this PDF import' });
   }
 });
 
@@ -152,7 +198,7 @@ router.post(
         message: 'PDF imported successfully',
         fileName: importFile.originalName,
         imported: items.length,
-        ourPricePercent: OUR_PRICE_PERCENT,
+        ourPriceHikePercent: OUR_PRICE_HIKE_PERCENT,
         warnings
       });
     } catch (error) {
