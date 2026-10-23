@@ -5,6 +5,9 @@ const shopPriceImportFileSchema = new mongoose.Schema({
   fileName: { type: String, required: true },
   filePath: { type: String, required: true },
   itemCount: { type: Number, default: 0 },
+  publishedProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  isLive: { type: Boolean, default: false },
+  liveAt: { type: Date, default: null },
   uploadedBy: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -13,6 +16,7 @@ const shopPriceImportItemSchema = new mongoose.Schema({
   itemType: { type: String, default: '' },
   picture: { type: String, default: '' },
   modelName: { type: String, required: true, trim: true },
+  skuCode: { type: String, default: '', unique: true, sparse: true },
   pdfPrice: { type: Number, required: true, min: 0 },
   hsnCode: { type: String, default: '' },
   gstPercent: { type: Number, default: null },

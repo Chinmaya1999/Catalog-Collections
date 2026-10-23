@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Upload, Zap } from 'lucide-react';
 import { API_ENDPOINTS, getImageUrl } from '../../config/api';
 
 const PAGE_SIZE = 50;
@@ -29,6 +29,7 @@ const ShopPriceImportSection = () => {
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [files, setFiles] = useState([]);
+  const [publishingFileId, setPublishingFileId] = useState('');
   const [revertingFileId, setRevertingFileId] = useState('');
   const fileInputRef = useRef(null);
 
@@ -112,7 +113,7 @@ const ShopPriceImportSection = () => {
 
   const revertImport = async (file) => {
     if (!window.confirm(
-      `Revert "${file.originalName}"? This removes its ${file.itemCount} imported rows and extracted pictures.`
+      `Revert "${file.originalName}"? This removes its ${file.itemCount} imported rows, extracted pictures, and products published from this PDF.`
     )) return;
 
     setRevertingFileId(file._id);
@@ -125,13 +126,40 @@ const ShopPriceImportSection = () => {
       });
       const data = await readResponse(response);
       if (!response.ok) throw new Error(data.message || 'Could not revert this PDF import');
-      setNotice(`${data.fileName} reverted. ${data.deletedItems} imported rows removed.`);
+      setNotice(
+        `${data.fileName} reverted. ${data.deletedItems} imported rows and ${data.unpublishedProducts || 0} published products removed.`
+      );
       setRefresh((value) => value + 1);
     } catch (revertError) {
       console.error('Error reverting Shop Price List PDF import:', revertError);
       setError(revertError.message || 'Could not revert this PDF import');
     } finally {
       setRevertingFileId('');
+    }
+  };
+
+  const publishImport = async (file) => {
+    if (!window.confirm(
+      `Make ${file.itemCount} products from "${file.originalName}" visible on the public Shop page?`
+    )) return;
+
+    setPublishingFileId(file._id);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch(`${API_ENDPOINTS.shopPriceImport}/files/${file._id}/publish`, {
+        method: 'POST',
+        headers: authHeaders()
+      });
+      const data = await readResponse(response);
+      if (!response.ok) throw new Error(data.message || 'Could not publish these products');
+      setNotice(`${data.published} products from ${data.fileName} are now live in the Shop.`);
+      setRefresh((value) => value + 1);
+    } catch (publishError) {
+      console.error('Error publishing Shop Price List products:', publishError);
+      setError(publishError.message || 'Could not publish these products');
+    } finally {
+      setPublishingFileId('');
     }
   };
 
@@ -170,26 +198,40 @@ const ShopPriceImportSection = () => {
 
       {files.length > 0 && (
         <div className="space-y-2 rounded-xl border border-gray-200 p-3">
-          <h3 className="text-sm font-semibold text-gray-800">Uploaded PDFs — revert an import</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Uploaded PDFs — publish or revert</h3>
           {files.map((file) => (
             <div key={file._id} className="flex flex-col gap-2 rounded-lg bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-gray-800">{file.originalName}</p>
                 <p className="text-xs text-gray-500">
                   {file.itemCount} items · {new Date(file.createdAt).toLocaleString()}
+                  {file.isLive ? ` · ${file.publishedProductIds?.length || file.itemCount} live` : ' · Draft'}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={Boolean(revertingFileId)}
-                onClick={() => revertImport(file)}
-                className="inline-flex items-center justify-center gap-1 self-start rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
-              >
-                {revertingFileId === file._id
-                  ? <Loader2 size={15} className="animate-spin" />
-                  : <Trash2 size={15} />}
-                Revert import
-              </button>
+              <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  disabled={file.isLive || Boolean(publishingFileId) || Boolean(revertingFileId)}
+                  onClick={() => publishImport(file)}
+                  className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {publishingFileId === file._id
+                    ? <Loader2 size={15} className="animate-spin" />
+                    : <Zap size={15} />}
+                  {file.isLive ? 'Products live' : 'Make products live'}
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(publishingFileId) || Boolean(revertingFileId)}
+                  onClick={() => revertImport(file)}
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {revertingFileId === file._id
+                    ? <Loader2 size={15} className="animate-spin" />
+                    : <Trash2 size={15} />}
+                  Revert import
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -215,6 +257,7 @@ const ShopPriceImportSection = () => {
               <th className="px-4 py-3 font-semibold">Type of item</th>
               <th className="px-4 py-3 font-semibold">Picture</th>
               <th className="px-4 py-3 font-semibold">Model Name/No.</th>
+              <th className="px-4 py-3 font-semibold">Unique SKU</th>
               <th className="px-4 py-3 text-right font-semibold">PDF price</th>
               <th className="px-4 py-3 text-right font-semibold">Our price (+70%)</th>
               <th className="px-4 py-3 font-semibold">HSN Code</th>
@@ -223,7 +266,7 @@ const ShopPriceImportSection = () => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></td></tr>
             ) : items.map((item) => (
               <tr key={item._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-gray-700">{item.itemType || '—'}</td>
@@ -233,6 +276,7 @@ const ShopPriceImportSection = () => {
                   ) : <span className="text-xs text-gray-400">No matched picture</span>}
                 </td>
                 <td className="px-4 py-3 font-medium text-gray-900">{item.modelName}</td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-600">{item.skuCode || 'Assigned when published'}</td>
                 <td className="px-4 py-3 text-right text-gray-600">{money(item.pdfPrice)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-gray-900">{money(item.ourPrice)}</td>
                 <td className="px-4 py-3 text-gray-600">{item.hsnCode || '—'}</td>
@@ -240,7 +284,7 @@ const ShopPriceImportSection = () => {
               </tr>
             ))}
             {!loading && items.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No imported items found. Upload a text-based PDF price list to get started.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">No imported items found. Upload a text-based PDF price list to get started.</td></tr>
             )}
           </tbody>
         </table>

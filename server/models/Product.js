@@ -47,6 +47,8 @@ const productSchema = new mongoose.Schema({
     pageNumber: { type: Number },
     pageCode: { type: String, default: null },
     pageImage: { type: String },
+    shopPriceImportFileId: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopPriceImportFile', default: null },
+    shopPriceImportItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopPriceImportItem', default: null },
     rawAiJson: { type: mongoose.Schema.Types.Mixed },
     confidence: { type: Number, default: null }
   },
