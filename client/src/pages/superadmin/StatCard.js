@@ -2,30 +2,33 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const colorMap = {
-  yellow: 'from-yellow-400 to-yellow-500 text-gray-900',
-  blue: 'from-blue-500 to-blue-600 text-white',
-  green: 'from-green-500 to-green-600 text-white',
-  purple: 'from-purple-500 to-purple-600 text-white',
-  pink: 'from-pink-500 to-pink-600 text-white'
+  yellow: 'bg-amber-50 text-amber-700 ring-amber-100',
+  blue: 'bg-blue-50 text-blue-700 ring-blue-100',
+  green: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  purple: 'bg-violet-50 text-violet-700 ring-violet-100',
+  pink: 'bg-rose-50 text-rose-700 ring-rose-100'
 };
 
 const StatCard = ({ icon: Icon, label, value, color = 'yellow', onClick }) => {
-  const gradient = colorMap[color] || colorMap.yellow;
+  const iconStyle = colorMap[color] || colorMap.yellow;
+  const Card = onClick ? motion.button : motion.div;
 
   return (
-    <motion.div
+    <Card
       whileHover={{ y: -4 }}
       onClick={onClick}
-      className={`bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center gap-4 ${onClick ? 'cursor-pointer' : ''}`}
+      type={onClick ? 'button' : undefined}
+      className={`group flex w-full items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-sm transition-shadow hover:shadow-md ${onClick ? 'cursor-pointer' : ''}`}
     >
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-md`}>
-        <Icon size={22} />
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ring-1 ${iconStyle}`}>
+        <Icon size={21} strokeWidth={2} />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm text-gray-500 font-medium truncate">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold text-slate-500">{label}</p>
+        <p className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
       </div>
-    </motion.div>
+      {onClick && <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500"><span aria-hidden="true">→</span></span>}
+    </Card>
   );
 };
 

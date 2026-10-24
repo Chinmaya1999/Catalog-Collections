@@ -27,7 +27,8 @@ import {
   ArrowRight,
   Gift,
   Megaphone,
-  IndianRupee
+  IndianRupee,
+  CalendarDays
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { API_ENDPOINTS, getImageUrl, getPdfUrl } from '../config/api';
@@ -40,24 +41,25 @@ import PriceListTab from './superadmin/PriceListTab';
 import ShopPriceListTab from './superadmin/ShopPriceListTab';
 
 const NAV_ITEMS = [
-  { id: 'overview', label: 'Overview', description: 'Key metrics and quick actions', icon: LayoutDashboard },
-  { id: 'catalogs', label: 'Catalogs', description: 'Create and manage product catalogs', icon: Package },
-  { id: 'vendors', label: 'Vendors', description: 'Add and manage vendors for each catalog', icon: MapPin },
-  { id: 'price-list', label: 'Price List', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
-  { id: 'shop-prices', label: 'Shop Price List', description: 'Shop products and imported PDF price lists', icon: IndianRupee },
-  { id: 'announcements', label: 'Announcements', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
-  { id: 'catalog-requests', label: 'Catalog Requests', description: 'View every catalog request, including ones admins deleted', icon: Gift },
-  { id: 'products', label: 'Shop Products', description: 'Manage every product shown in the public Shop', icon: Package },
-  { id: 'catalog-pdfs', label: 'View All PDFs', description: 'View every uploaded catalog PDF', icon: FileText },
-  { id: 'pdf-analysis', label: 'PDF Analysis', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
-  { id: 'analysis', label: 'Data Import/Export', description: 'Export and import vendor data via Excel', icon: Database },
-  { id: 'categories', label: 'Categories', description: 'Manage product categories for catalogs', icon: Tag }
+  { id: 'overview', label: 'Overview', group: 'Workspace', description: 'Key metrics and quick actions', icon: LayoutDashboard },
+  { id: 'catalogs', label: 'Catalogs', group: 'Shop management', description: 'Create and manage product catalogs', icon: Package },
+  { id: 'vendors', label: 'Vendors', group: 'Shop management', description: 'Add and manage vendors for each catalog', icon: MapPin },
+  { id: 'price-list', label: 'Price List', group: 'Shop management', description: 'Upload PDF / Excel price lists and look up any SKU price', icon: IndianRupee },
+  { id: 'shop-prices', label: 'Shop Price List', group: 'Shop management', description: 'Shop products and imported PDF price lists', icon: IndianRupee },
+  { id: 'products', label: 'Shop Products', group: 'Shop management', description: 'Manage every product shown in the public Shop', icon: Package },
+  { id: 'categories', label: 'Categories', group: 'Shop management', description: 'Manage product categories for catalogs', icon: Tag },
+  { id: 'announcements', label: 'Announcements', group: 'Content & tools', description: 'Run festival offers and discount banners for all users', icon: Megaphone },
+  { id: 'catalog-requests', label: 'Catalog Requests', group: 'Content & tools', description: 'View every catalog request, including ones admins deleted', icon: Gift },
+  { id: 'catalog-pdfs', label: 'View All PDFs', group: 'Content & tools', description: 'View every uploaded catalog PDF', icon: FileText },
+  { id: 'pdf-analysis', label: 'PDF Analysis', group: 'Content & tools', description: 'Upload PDFs and auto-extract structured data', icon: Sparkles },
+  { id: 'analysis', label: 'Data Import/Export', group: 'Content & tools', description: 'Export and import vendor data via Excel', icon: Database }
 ];
 
 const SuperadminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [pdfDocsCount, setPdfDocsCount] = useState(0);
   const [catalogs, setCatalogs] = useState([]);
@@ -986,92 +988,123 @@ const SuperadminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f5f6f8] text-slate-900">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar — pinned to the viewport so it never scrolls with the page */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 h-screen bg-gray-900 text-white flex flex-col transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col border-r border-slate-800 bg-[#111827] text-white shadow-2xl shadow-slate-950/10 transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="px-6 py-6 border-b border-gray-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0 overflow-hidden">
-            <img
-              src="/images/logo.png"
-              alt="Adihuman Logo"
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<span class="font-bold text-white">A</span>';
-              }}
-            />
+        <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg shadow-black/20">
+            {logoFailed
+              ? <span className="text-lg font-extrabold text-slate-900">A</span>
+              : <img
+                src="/images/logo.png"
+                alt="Adihuman Logo"
+                className="h-full w-full object-contain p-1"
+                onError={() => setLogoFailed(true)}
+              />}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-lg leading-tight truncate">Adihuman</p>
-            <p className="text-xs text-gray-400">Super Admin</p>
+            <p className="truncate text-base font-extrabold tracking-tight">Adihuman</p>
+            <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Admin workspace</p>
           </div>
-          <button className="ml-auto lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)}>
+          <button aria-label="Close navigation" className="ml-auto rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X size={22} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
-                activeTab === item.id
-                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-md'
-                  : 'text-gray-300 hover:bg-gray-800'
-              }`}
-            >
-              <item.icon size={20} />
-              {item.label}
-            </button>
+        <nav aria-label="Superadmin navigation" className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
+          {['Workspace', 'Shop management', 'Content & tools'].map(group => (
+            <div key={group}>
+              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{group}</p>
+              <div className="space-y-1">
+                {NAV_ITEMS.filter(item => item.group === group).map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-current={activeTab === item.id ? 'page' : undefined}
+                    onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-all ${
+                      activeTab === item.id
+                        ? 'bg-white text-slate-950 shadow-lg shadow-black/10'
+                        : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'
+                    }`}
+                  >
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeTab === item.id ? 'bg-amber-100 text-amber-800' : 'bg-white/[0.06] text-slate-400 group-hover:text-white'}`}>
+                      <item.icon size={17} />
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                    {activeTab === item.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-gray-800">
+        <div className="border-t border-white/[0.08] p-3">
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-300 hover:bg-gray-800 transition-all"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.07] hover:text-white"
           >
-            <LogOut size={20} />
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06]"><LogOut size={17} /></span>
             Sign Out
           </button>
         </div>
       </aside>
 
       {/* Main content — offset past the fixed sidebar on large screens */}
-      <div className="lg:pl-72 flex flex-col min-h-screen">
+      <div className="flex min-h-screen flex-col lg:pl-72">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b px-4 sm:px-8 py-4 flex items-center gap-4">
-          <button className="lg:hidden text-gray-500" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-slate-200/80 bg-white/90 px-4 py-3.5 backdrop-blur-xl sm:px-8">
+          <button aria-label="Open navigation" className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu size={24} />
           </button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{currentNavItem.label}</h1>
-            <p className="text-sm text-gray-500 hidden sm:block">{currentNavItem.description}</p>
+          <div className="min-w-0 flex-1">
+            <p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 sm:block">{currentNavItem.group}</p>
+            <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{currentNavItem.label}</h1>
+            <p className="hidden text-xs text-slate-500 md:block">{currentNavItem.description}</p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:flex">
+            <CalendarDays size={15} className="text-slate-400" />
+            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-xs font-extrabold text-white shadow-sm" title="Super Admin">
+            SA
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-7 p-4 sm:p-7 lg:p-9">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-7"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700">Your workspace</p>
+                <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Welcome back</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Here’s a clear view of your catalog operations. Pick up where you left off.</p>
+              </div>
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Workspace active
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard
                 icon={Package}
                 label="Total Catalogs"
@@ -1109,29 +1142,41 @@ const SuperadminDashboard = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
-                  <h2 className="text-lg font-bold text-gray-900">Recent Catalogs</h2>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+              <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm xl:col-span-2">
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5 sm:px-6">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Latest activity</p>
+                    <h2 className="mt-1 text-lg font-extrabold text-slate-900">Recent catalogs</h2>
+                  </div>
+                  <button type="button" onClick={() => setActiveTab('catalogs')} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950">
+                    View catalogs <ArrowRight size={14} />
+                  </button>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-slate-100">
                   {(dashboardStats?.recentCatalogs || []).length === 0 ? (
-                    <p className="p-6 text-gray-400 text-center">No catalogs yet</p>
+                    <div className="px-6 py-12 text-center">
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Package size={22} /></div>
+                      <p className="text-sm font-semibold text-slate-700">No catalogs yet</p>
+                      <p className="mt-1 text-xs text-slate-400">Add your first catalog to see it here.</p>
+                    </div>
                   ) : (
                     dashboardStats.recentCatalogs.map(catalog => (
-                      <div key={catalog._id} className="flex items-center gap-4 px-6 py-4">
-                        {catalog.image && (
-                          <img
-                            src={getImageUrl(catalog.image)}
-                            alt={catalog.name}
-                            className="w-12 h-12 rounded-lg object-cover shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{catalog.name}</p>
-                          <p className="text-sm text-gray-500">{(catalog.categoryNames || []).join(', ') || catalog.categoryName}</p>
+                      <div key={catalog._id} className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-slate-50/80 sm:px-6">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-amber-50 text-amber-700">
+                          {catalog.image ? (
+                            <img
+                              src={getImageUrl(catalog.image)}
+                              alt={catalog.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : <Package size={19} />}
                         </div>
-                        <span className="text-xs text-gray-400 shrink-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-slate-800">{catalog.name}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">{(catalog.categoryNames || []).join(', ') || catalog.categoryName || 'Uncategorized'}</p>
+                        </div>
+                        <span className="shrink-0 text-xs font-medium text-slate-400">
                           {new Date(catalog.createdAt).toLocaleDateString()}
                         </span>
                       </div>
@@ -1140,25 +1185,32 @@ const SuperadminDashboard = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-3">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">Quick Actions</h2>
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Shortcuts</p>
+                <h2 className="mb-4 mt-1 text-lg font-extrabold text-slate-900">Quick actions</h2>
                 <button
                   onClick={() => { setActiveTab('catalogs'); handleAddCatalog(); }}
-                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                  className="group mb-2 flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50"
                 >
-                  Add Catalog <ArrowRight size={16} />
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm"><Plus size={17} /></span>
+                  <span className="flex-1"><span className="block text-sm font-bold text-slate-800">Add catalog</span><span className="mt-0.5 block text-[11px] text-slate-500">Create a new product collection</span></span>
+                  <ArrowRight size={15} className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-amber-700" />
                 </button>
                 <button
                   onClick={() => setActiveTab('vendors')}
-                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                  className="group mb-2 flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50"
                 >
-                  Add Vendor <ArrowRight size={16} />
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm"><MapPin size={17} /></span>
+                  <span className="flex-1"><span className="block text-sm font-bold text-slate-800">Manage vendors</span><span className="mt-0.5 block text-[11px] text-slate-500">Add vendor details and locations</span></span>
+                  <ArrowRight size={15} className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
                 </button>
                 <button
                   onClick={() => setActiveTab('pdf-analysis')}
-                  className="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 font-medium text-gray-700 transition-all"
+                  className="group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-3 text-left transition hover:border-violet-200 hover:bg-violet-50"
                 >
-                  Upload PDF <ArrowRight size={16} />
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-violet-700 shadow-sm"><Sparkles size={17} /></span>
+                  <span className="flex-1"><span className="block text-sm font-bold text-slate-800">Analyze a PDF</span><span className="mt-0.5 block text-[11px] text-slate-500">Extract products from a catalog</span></span>
+                  <ArrowRight size={15} className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-violet-700" />
                 </button>
               </div>
             </div>
