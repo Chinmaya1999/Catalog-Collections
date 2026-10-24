@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Search,
   X,
@@ -27,6 +27,7 @@ import SEO from '../components/SEO';
 import PriceNoticeBanner from '../components/PriceNoticeBanner';
 import ProposalDrawer, { buildProposalText } from '../components/ProposalDrawer';
 import CostsProfitDrawer from '../components/CostsProfitDrawer';
+import ProductCustomizer from '../components/ProductCustomizer';
 import { useSavedProducts } from '../hooks/useSavedProducts';
 import { useProposal, displayCode } from '../hooks/useProposal';
 import { usePricing } from '../hooks/usePricing';
@@ -129,7 +130,7 @@ const CostInput = ({ code, onSet }) => (
  * supplier cost) and `internal` adds supplier code + cost breakdown. Without `pricing` the card shows
  * the public shop price (priceFrom).
  */
-const ProductCard = ({ product, saved, onToggleSave, selected, onToggleSelect, pricing, pr, internal, onEditPricing, onSetCost }) => {
+const ProductCard = ({ product, saved, onToggleSave, selected, onToggleSelect, pricing, pr, internal, onEditPricing, onSetCost, onCustomize, customizing = false }) => {
   const primary = product.images?.find((i) => i.isPrimary) || product.images?.[0];
   const secondary = product.images?.find((i) => i !== primary);
   const extraColors = (product.colors?.length || 0) - 5;
@@ -155,7 +156,10 @@ const ProductCard = ({ product, saved, onToggleSave, selected, onToggleSelect, p
         <div className="relative aspect-square rounded-2xl bg-gradient-to-b from-ink-50 to-ink-100 overflow-hidden">
           {primary ? (
             <>
-              <img
+              <motion.img
+                layoutId={onCustomize ? `fitting-room-product-${product._id}` : undefined}
+                animate={{ opacity: customizing ? 0 : 1 }}
+                transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.25 } }}
                 src={getImageUrl(primary.path)}
                 alt={product.name || 'Product'}
                 className={`absolute inset-0 w-full h-full object-contain p-3 mix-blend-multiply transition-all duration-700 ease-out group-hover:scale-105 ${secondary ? 'group-hover:opacity-0' : ''}`}
@@ -229,6 +233,17 @@ const ProductCard = ({ product, saved, onToggleSave, selected, onToggleSelect, p
             >
               <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-white' : ''}`} />
             </button>
+            {onCustomize && (
+              <button
+                type="button"
+                onClick={(e) => { stopLink(e); onCustomize(product); }}
+                aria-label={`Customize ${product.name || 'product'}`}
+                title="Add your brand"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-yellow text-brand-dark shadow-soft transition-all duration-300 hover:scale-110 hover:bg-white active:scale-90"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -491,7 +506,14 @@ const Shop = () => {
   const [proposalOpen, setProposalOpen] = useState(false);
   const [costsOpen, setCostsOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [customizingProduct, setCustomizingProduct] = useState(null);
   const [toast, setToast] = useState('');
+  const closeCustomizer = useCallback(() => setCustomizingProduct(null), []);
+  const customizerRef = useRef(null);
+  const handleCustomize = useCallback((product) => {
+    setCustomizingProduct(product);
+    setSavedModalOpen(false);
+  }, []);
 
   // Every filter is seeded from the URL and kept in sync with it (see the sync effect below).
   // Without this, clicking into a product and hitting the browser's Back button remounts Shop
@@ -520,6 +542,14 @@ const Shop = () => {
   const proposal = useProposal();
   const topRef = useRef(null);
   const sentinelRef = useRef(null);
+
+  useEffect(() => {
+    if (!customizingProduct || !window.matchMedia('(max-width: 1023px)').matches) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      customizerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [customizingProduct]);
 
   // ---- Superadmin "My pricing" view ----
   // The superadmin gets the whole catalogue with supplier costs and prices/filters/sorts it here,
@@ -803,6 +833,29 @@ const Shop = () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
+  const sendCustomQuoteOnWhatsApp = ({ product, brandName, printColor, itemColor, itemColorCode, placement, brandPosition, brandRotation, logoSize, fontSize, fontStyle, logoName }) => {
+    const lines = [
+      'Hi, I would like a custom-branded quote for this product:',
+      `Product: ${product.name || 'Unnamed product'}`,
+      product.brand ? `Product brand: ${product.brand}` : null,
+      supplierCodeOf(product) ? `Product code: ${supplierCodeOf(product)}` : null,
+      brandName ? `Brand name to add: ${brandName}` : null,
+      `Product color: ${itemColor}${itemColorCode ? ` (${itemColorCode})` : ''}`,
+      `Print color: ${printColor}`,
+      `Brand placement: ${placement}`,
+      brandPosition ? `Brand position on preview: ${Math.round(brandPosition.x)}% across, ${Math.round(brandPosition.y)}% down` : null,
+      brandRotation ? `Brand design rotation: ${brandRotation}°` : null,
+      logoSize ? `Brand logo size: ${logoSize}px` : null,
+      fontSize ? `Brand text size: ${fontSize}px` : null,
+      fontStyle ? `Brand font design: ${fontStyle}` : null,
+      logoName ? `Logo file: ${logoName} (I will attach the original file here)` : 'I will share my logo/design for the mockup.',
+      `Product link: ${window.location.origin}/shop/${product._id}`
+    ].filter(Boolean);
+    const text = encodeURIComponent(lines.join('\n'));
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank', 'noopener,noreferrer');
+    setCustomizingProduct(null);
+  };
+
   const budgetLabel = minPrice || maxPrice ? ` in ${inr(Number(minPrice) || 0)} – ${maxPrice ? inr(Number(maxPrice)) : 'any'}${useAdmin ? ` ${gst}` : ''}` : '';
   const hasTray = useAdmin || proposal.list.length > 0;
   const sortOptions = internal ? [...SORT_OPTIONS, PROFIT_SORT] : SORT_OPTIONS;
@@ -939,6 +992,17 @@ const Shop = () => {
       </section>
 
       <section ref={topRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-10 scroll-mt-28">
+        <LayoutGroup id="shop-fitting-room">
+          <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] xl:gap-7">
+            <aside ref={customizerRef} className="min-w-0 scroll-mt-24 xl:sticky xl:top-24">
+            <ProductCustomizer
+              product={customizingProduct}
+              onClose={closeCustomizer}
+              onRequestQuote={sendCustomQuoteOnWhatsApp}
+            />
+            </aside>
+
+            <div className="min-w-0">
         {/* Count + controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
@@ -1059,6 +1123,8 @@ const Shop = () => {
                       internal={internal}
                       onEditPricing={setEditingProduct}
                       onSetCost={setCost}
+                      onCustomize={handleCustomize}
+                      customizing={customizingProduct?._id === p._id}
                     />
                   ))}
                 </AnimatePresence>
@@ -1089,6 +1155,9 @@ const Shop = () => {
             )}
           </>
         )}
+            </div>
+          </div>
+        </LayoutGroup>
       </section>
 
       {/* Price notice + calculator promo */}
@@ -1229,6 +1298,7 @@ const Shop = () => {
             toggleSaved={toggleSaved}
             proposal={proposal}
             onClose={() => setSavedModalOpen(false)}
+            onCustomize={handleCustomize}
           />
         )}
       </AnimatePresence>
@@ -1236,7 +1306,7 @@ const Shop = () => {
   );
 };
 
-const SavedProductsModal = ({ savedIds, toggleSaved, proposal, onClose }) => {
+const SavedProductsModal = ({ savedIds, toggleSaved, proposal, onClose, onCustomize }) => {
   const [items, setItems] = useState(null);
 
   useEffect(() => {
@@ -1295,6 +1365,7 @@ const SavedProductsModal = ({ savedIds, toggleSaved, proposal, onClose }) => {
                   onToggleSave={toggleSaved}
                   selected={!!proposal.items[p._id]}
                   onToggleSelect={proposal.toggle}
+                  onCustomize={onCustomize}
                 />
               ))}
             </div>
