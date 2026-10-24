@@ -349,6 +349,27 @@ router.post('/products/:id/unpublish', async (req, res) => {
   }
 });
 
+router.delete('/products/bulk-delete-without-images', async (req, res) => {
+  const productIds = req.body.productIds;
+  if (!Array.isArray(productIds) || productIds.length === 0) {
+    return res.status(400).json({ message: 'Select at least one product to delete' });
+  }
+  if (productIds.some(id => !/^[a-f\d]{24}$/i.test(id))) {
+    return res.status(400).json({ message: 'One or more product IDs are invalid' });
+  }
+
+  try {
+    const result = await Product.deleteMany({
+      _id: { $in: productIds },
+      'images.0': { $exists: false }
+    });
+    res.json({ message: `Deleted ${result.deletedCount} product${result.deletedCount === 1 ? '' : 's'}`, deletedCount: result.deletedCount });
+  } catch (error) {
+    console.error('Error bulk-deleting products without images:', error);
+    res.status(500).json({ message: 'Error deleting products' });
+  }
+});
+
 router.delete('/products/:id', async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);

@@ -27,6 +27,9 @@ const ProductManagementTab = () => {
   const [showProductEditor, setShowProductEditor] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedImageFiles, setSelectedImageFiles] = useState([]);
+  const [showMissingPhotos, setShowMissingPhotos] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [pdfViewer, setPdfViewer] = useState(null);
   const [loadError, setLoadError] = useState('');
@@ -82,10 +85,16 @@ const ProductManagementTab = () => {
     return [...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }, [products]);
 
+  const productsWithoutPhotos = useMemo(
+    () => products.filter(product => !product.images?.length),
+    [products]
+  );
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return products;
-    return products.filter(product => {
+    const sourceProducts = showMissingPhotos ? productsWithoutPhotos : products;
+    if (!query) return sourceProducts;
+    return sourceProducts.filter(product => {
       const haystacks = [
         product.name,
         product.brand,
@@ -94,10 +103,13 @@ const ProductManagementTab = () => {
       ];
       return haystacks.some(value => (value || '').toLowerCase().includes(query));
     });
-  }, [products, search]);
+  }, [products, productsWithoutPhotos, search, showMissingPhotos]);
 
   // Rendering thousands of photo cards at once freezes the page, so show them in batches.
-  useEffect(() => { setVisibleCount(60); }, [search]);
+  useEffect(() => {
+    setVisibleCount(60);
+    setSelectedProductIds([]);
+  }, [search, showMissingPhotos]);
 
   const openCatalogPage = (product) => {
     const catalog = getCatalog(product);
@@ -223,8 +235,10 @@ const ProductManagementTab = () => {
           description: form.description || null,
           badges: form.badges.split(',').map(value => value.trim()).filter(Boolean),
           variants,
-          images: form.imageUrl && currentImage
-            ? editingProduct.images.map(image => image._id === currentImage._id ? { ...image, path: form.imageUrl } : image)
+          images: form.imageUrl
+            ? currentImage
+              ? editingProduct.images.map(image => image._id === currentImage._id ? { ...image, path: form.imageUrl } : image)
+              : [{ path: form.imageUrl, isPrimary: true }]
             : editingProduct.images,
           categoryName: form.categoryName || null,
           isPublished: form.isPublished,
@@ -257,6 +271,42 @@ const ProductManagementTab = () => {
     }
   };
 
+  const toggleProductSelection = (productId) => {
+    setSelectedProductIds(current => current.includes(productId)
+      ? current.filter(id => id !== productId)
+      : [...current, productId]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.length === 0) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedProductIds.length} selected product${selectedProductIds.length === 1 ? '' : 's'} without photos? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_ENDPOINTS.productExtraction}/products/bulk-delete-without-images`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ productIds: selectedProductIds })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Products could not be deleted');
+      setSelectedProductIds([]);
+      await fetchProducts();
+      window.alert(result.message);
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   if (loading) return <div className="p-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-yellow-500" /></div>;
 
   return (
@@ -266,7 +316,7 @@ const ProductManagementTab = () => {
           <h2 className="text-2xl font-bold text-gray-900">Shop Product Management</h2>
           <p className="mt-1 text-gray-600">Edit the products, images, prices and details shown on the public Shop page.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3"><button onClick={() => setCostsOpen(true)} className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-900 hover:border-yellow-400"><SlidersHorizontal className="h-4 w-4" /> Costs &amp; profit</button><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{filteredProducts.length} of {products.length} products</span></div>
+        <div className="flex flex-wrap items-center gap-3"><button onClick={() => setCostsOpen(true)} className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-900 hover:border-yellow-400"><SlidersHorizontal className="h-4 w-4" /> Costs &amp; profit</button><button type="button" onClick={() => setShowMissingPhotos(current => !current)} className={`inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold ${showMissingPhotos ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-amber-200 bg-white text-amber-800 hover:border-amber-400'}`}><ImagePlus className="h-4 w-4" />{showMissingPhotos ? 'Show all products' : `Missing photos (${productsWithoutPhotos.length})`}</button><button onClick={startCreating} className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-gray-900 hover:bg-yellow-500">+ Add Product</button><span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-800">{filteredProducts.length} of {showMissingPhotos ? productsWithoutPhotos.length : products.length} products</span></div>
       </div>
 
       <div className="relative max-w-md">
@@ -292,8 +342,39 @@ const ProductManagementTab = () => {
         </div>
       )}
 
+      {showMissingPhotos && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div>
+            <p className="font-bold text-amber-950">{productsWithoutPhotos.length} product{productsWithoutPhotos.length === 1 ? '' : 's'} without photos</p>
+            <p className="mt-1 text-sm text-amber-800">Edit a product to upload its photos, or select products to delete them in bulk.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {filteredProducts.length > 0 && (
+              <label className="flex items-center gap-2 text-sm font-semibold text-amber-950">
+                <input
+                  type="checkbox"
+                  checked={filteredProducts.length > 0 && filteredProducts.every(product => selectedProductIds.includes(product._id))}
+                  onChange={event => setSelectedProductIds(event.target.checked ? filteredProducts.map(product => product._id) : [])}
+                  className="h-4 w-4 accent-amber-600"
+                />
+                Select {search ? 'matching' : 'all'} ({filteredProducts.length})
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={selectedProductIds.length === 0 || bulkDeleting}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {bulkDeleting ? 'Deleting...' : `Delete selected (${selectedProductIds.length})`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {filteredProducts.length === 0 ? (
-        <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{search ? `No products match "${search}".` : 'No products found.'}</p></div>
+        <div className="rounded-2xl bg-white p-12 text-center shadow-lg"><PackageSearch className="mx-auto mb-3 h-12 w-12 text-gray-300" /><p className="text-gray-500">{showMissingPhotos && !search ? 'All products have photos.' : search ? `No products match "${search}".` : 'No products found.'}</p></div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredProducts.slice(0, visibleCount).map(product => {
@@ -305,6 +386,7 @@ const ProductManagementTab = () => {
                 <div className="relative h-52 bg-gray-100">
                   {primaryImage ? <img src={getImageUrl(primaryImage.path)} alt={product.name || 'Product'} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center"><PackageSearch className="h-10 w-10 text-gray-300" /></div>}
                   <span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold ${product.isPublished ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}>{product.isPublished ? 'Published' : 'Hidden'}</span>
+                  {showMissingPhotos && <input type="checkbox" checked={selectedProductIds.includes(product._id)} onChange={() => toggleProductSelection(product._id)} aria-label={`Select ${product.name || 'product'} for deletion`} className="absolute right-3 top-3 h-5 w-5 rounded accent-amber-600" />}
                 </div>
                 <div className="p-5">
                   <p className="text-xs font-bold uppercase tracking-wider text-yellow-600">{product.categoryName || 'Uncategorized'}</p>
