@@ -20,6 +20,26 @@ import { swatchColor } from '../utils/colorSwatch';
 
 const MAX_LOGO_SIZE = 5 * 1024 * 1024;
 
+const GOOGLE_FONT_NAMES = [
+  'Abril Fatface', 'Anton', 'Archivo', 'Arimo', 'Asap', 'Barlow', 'Bebas Neue',
+  'Bitter', 'Cabin', 'Cardo', 'Caveat', 'Cinzel', 'Cormorant Garamond',
+  'Crimson Text', 'DM Sans', 'DM Serif Display', 'Dancing Script', 'Dosis',
+  'EB Garamond', 'Exo 2', 'Fira Code', 'Fira Sans', 'Great Vibes', 'Heebo',
+  'Inconsolata', 'Inter', 'Josefin Sans', 'Karla', 'Lato', 'Libre Baskerville',
+  'Lobster', 'Lora', 'Manrope', 'Merriweather', 'Montserrat', 'Mulish',
+  'Noto Sans', 'Noto Serif', 'Nunito', 'Nunito Sans', 'Open Sans', 'Oswald',
+  'Outfit', 'Pacifico', 'Playfair Display', 'Plus Jakarta Sans', 'Poppins',
+  'PT Sans', 'PT Serif', 'Quicksand', 'Raleway', 'Roboto', 'Roboto Slab',
+  'Rubik', 'Satisfy', 'Source Code Pro', 'Source Sans 3', 'Space Grotesk',
+  'Space Mono', 'Teko', 'Ubuntu', 'Urbanist', 'Work Sans'
+].map((name) => ({
+  id: name,
+  label: name,
+  family: `"${name}", sans-serif`,
+  weight: 700,
+  tracking: '0.04em'
+}));
+
 const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
   const images = useMemo(() => product?.images || [], [product?.images]);
   const [imageIndex, setImageIndex] = useState(() => {
@@ -33,7 +53,8 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
   const [brandRotation, setBrandRotation] = useState(0);
   const [logoSize, setLogoSize] = useState(96);
   const [fontSize, setFontSize] = useState(18);
-  const [fontStyle, setFontStyle] = useState('modern');
+  const [fontStyle, setFontStyle] = useState('Montserrat');
+  const [fontSearch, setFontSearch] = useState('');
   const previewRef = useRef(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const [logo, setLogo] = useState(null);
@@ -59,6 +80,21 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
     if (!logo?.url) return undefined;
     return () => URL.revokeObjectURL(logo.url);
   }, [logo]);
+
+  useEffect(() => {
+    const selected = GOOGLE_FONT_NAMES.find((font) => font.id === fontStyle);
+    if (!selected) return undefined;
+
+    let stylesheet = document.getElementById('customizer-google-fonts');
+    if (!stylesheet) {
+      stylesheet = document.createElement('link');
+      stylesheet.id = 'customizer-google-fonts';
+      stylesheet.rel = 'stylesheet';
+      document.head.appendChild(stylesheet);
+    }
+    stylesheet.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(selected.label)}&display=swap`;
+    return undefined;
+  }, [fontStyle]);
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -94,7 +130,7 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
       brandRotation,
       logoSize,
       fontSize,
-      fontStyle: fontStyles.find((style) => style.id === fontStyle)?.label || 'Modern',
+      fontStyle: selectedFont.label,
       logoName: logo?.name || ''
     });
   };
@@ -104,14 +140,12 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
     { id: 'center', label: 'Center', y: 50 },
     { id: 'lower', label: 'Bottom', y: 64 }
   ];
-  const fontStyles = [
-    { id: 'modern', label: 'Modern', family: 'Arial, Helvetica, sans-serif', weight: 800, tracking: '0.12em' },
-    { id: 'classic', label: 'Classic serif', family: 'Georgia, "Times New Roman", serif', weight: 700, tracking: '0.04em' },
-    { id: 'bold', label: 'Bold display', family: 'Impact, "Arial Black", sans-serif', weight: 900, tracking: '0.06em' },
-    { id: 'minimal', label: 'Minimal', family: 'Arial, Helvetica, sans-serif', weight: 500, tracking: '0.2em' },
-    { id: 'mono', label: 'Monospace', family: '"Courier New", monospace', weight: 700, tracking: '0.06em' }
-  ];
+  const fontStyles = GOOGLE_FONT_NAMES;
   const selectedFont = fontStyles.find((style) => style.id === fontStyle) || fontStyles[0];
+  const visibleFonts = fontStyles.filter((style) => style.label.toLowerCase().includes(fontSearch.trim().toLowerCase()));
+  const fontOptions = visibleFonts.some((style) => style.id === selectedFont.id)
+    ? visibleFonts
+    : [selectedFont, ...visibleFonts];
   const printColorOptions = ['#171817', '#ffffff', '#f5c842', '#bd3d3d', '#3268a8', '#2f7b58'];
   const selectPlacement = (option) => {
     setPlacement(option.id);
@@ -329,9 +363,18 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
 
               <section>
                 <label htmlFor="brand-font-style" className="mb-2 block text-xs font-bold uppercase tracking-[0.1em] text-slate-600">Font design</label>
+                <input
+                  type="search"
+                  value={fontSearch}
+                  onChange={(event) => setFontSearch(event.target.value)}
+                  placeholder="Search Google Fonts"
+                  aria-label="Search Google Fonts"
+                  className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                />
                 <select id="brand-font-style" value={fontStyle} onChange={(event) => setFontStyle(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100">
-                  {fontStyles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
+                  {fontOptions.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
                 </select>
+                <p className="mt-1 text-[11px] text-slate-500">{visibleFonts.length} matching Google Fonts · Internet required to load the selected font</p>
                 {brandName && <p className="mt-2 truncate text-center text-lg" style={{ fontFamily: selectedFont.family, fontWeight: selectedFont.weight, letterSpacing: selectedFont.tracking, color: printColor }}>{brandName}</p>}
               </section>
 
