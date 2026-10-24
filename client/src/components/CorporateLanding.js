@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -168,8 +168,10 @@ const CorporateLanding = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [iconOffset, setIconOffset] = useState(0);
   const videoRef = useRef(null);
+  const reduceMotion = useReducedMotion();
   const currentSlide = heroSlides[activeSlide];
   const heroIconCount = Math.min(4, allProducts.length);
+  const floatingProducts = [0, 1].map((slot) => allProducts[(iconOffset + slot) % allProducts.length]);
 
   const advanceSlide = () => {
     setActiveSlide((index) => (index + 1) % heroSlides.length);
@@ -266,12 +268,12 @@ const CorporateLanding = () => {
         )}
       </div>
 
-      <div className="relative mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-center px-4 pb-32 pt-36 sm:px-6 lg:min-h-[820px] lg:px-8 lg:pb-40">
+      <div className="relative mx-auto grid min-h-[100svh] w-full max-w-7xl grid-cols-1 items-center px-4 pb-32 pt-36 sm:px-6 lg:min-h-[820px] lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:pb-40">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-3xl"
+          className="relative z-10 max-w-3xl"
         >
           <div className="mb-7 inline-flex items-center gap-2 rounded-full glass-dark py-1.5 pl-1.5 pr-4 text-xs font-semibold text-white/85">
             <span className="flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-dark">
@@ -303,38 +305,96 @@ const CorporateLanding = () => {
             ))}
           </div>
         </motion.div>
-      </div>
 
-      {heroIconCount > 0 && (
-        <div className="pointer-events-none absolute inset-y-0 right-4 z-10 hidden flex-col items-center justify-center gap-4 md:right-8 md:flex lg:right-14">
-          <div className="flex flex-col items-center gap-4 rounded-full glass-dark p-2.5">
-            {Array.from({ length: heroIconCount }).map((_, slot) => {
-              const product = allProducts[(iconOffset + slot) % allProducts.length];
-              return (
-                <Link
-                  key={slot}
-                  to={product.href || '/shop'}
-                  aria-label={`Shop ${product.name}`}
-                  className="pointer-events-auto block transition duration-300 hover:scale-110"
-                >
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={`${product.name}-${iconOffset}-${slot}`}
-                      initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
-                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, rotate: 20 }}
-                      transition={{ duration: 0.35 }}
-                      className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-white shadow-lg ring-2 ring-white/20 transition hover:ring-brand-yellow sm:h-16 sm:w-16"
-                    >
-                      <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                    </motion.span>
-                  </AnimatePresence>
-                </Link>
-              );
-            })}
-          </div>
+        <div className="relative hidden min-h-[520px] items-center justify-center lg:flex">
+          <motion.div
+            aria-hidden="true"
+            className="absolute h-[410px] w-[410px] rounded-full border border-white/15"
+            animate={reduceMotion ? undefined : { rotate: 360 }}
+            transition={{ duration: 48, repeat: Infinity, ease: 'linear' }}
+          >
+            <span className="absolute -left-1 top-1/2 h-2.5 w-2.5 rounded-full bg-brand-yellow shadow-[0_0_20px_rgba(255,210,63,0.9)]" />
+            <span className="absolute right-10 top-10 h-2 w-2 rounded-full bg-white/80 shadow-[0_0_16px_rgba(255,255,255,0.8)]" />
+          </motion.div>
+          <div aria-hidden="true" className="absolute h-[330px] w-[330px] rounded-full border border-dashed border-white/10" />
+          <div aria-hidden="true" className="absolute h-[270px] w-[270px] rounded-full bg-brand-yellow/10 blur-3xl" />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 24 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, scale: 1, y: [0, -10, 0] }}
+            transition={reduceMotion ? { duration: 0.45 } : { opacity: { duration: 0.7 }, scale: { duration: 0.7 }, y: { duration: 6, repeat: Infinity, ease: 'easeInOut' } }}
+            className="relative z-10 w-full max-w-[570px] rounded-[30px] border border-white/25 bg-white/10 p-2.5 shadow-[0_35px_100px_-35px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+          >
+            <div className="overflow-hidden rounded-[23px] bg-white">
+              <img
+                src="/images/showcase/hero-products.png"
+                alt="A collection of custom branded corporate gifts and products"
+                className="aspect-[2.32/1] w-full object-cover"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 px-3 pb-1 pt-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-yellow">Made for your brand</p>
+                <p className="mt-1 text-sm font-semibold text-white">Everyday products. Lasting impressions.</p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-yellow text-brand-dark shadow-glow">
+                <Sparkles className="h-4 w-4" />
+              </span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 18, y: 10 }}
+            animate={reduceMotion ? { opacity: 1, x: 0, y: 0 } : { opacity: 1, x: 0, y: [0, -9, 0] }}
+            transition={reduceMotion ? { delay: 0.2, duration: 0.4 } : { opacity: { delay: 0.2, duration: 0.5 }, x: { delay: 0.2, duration: 0.5 }, y: { delay: 0.2, duration: 5, repeat: Infinity, ease: 'easeInOut' } }}
+            className="absolute -left-3 top-14 z-20 w-36 overflow-hidden rounded-2xl border border-white/30 bg-white p-1.5 shadow-2xl shadow-black/30 xl:-left-6"
+          >
+            <img src="/images/showcase/hero-brand.png" alt="" className="aspect-[1.27/1] w-full rounded-xl object-cover" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -14, y: 12 }}
+            animate={reduceMotion ? { opacity: 1, x: 0, y: 0 } : { opacity: 1, x: 0, y: [0, 10, 0] }}
+            transition={reduceMotion ? { delay: 0.3, duration: 0.4 } : { opacity: { delay: 0.3, duration: 0.5 }, x: { delay: 0.3, duration: 0.5 }, y: { delay: 0.4, duration: 5.5, repeat: Infinity, ease: 'easeInOut' } }}
+            className="absolute -bottom-2 right-1 z-20 flex items-center gap-3 rounded-2xl border border-white/20 bg-slate-950/75 p-2.5 pr-4 shadow-2xl shadow-black/30 backdrop-blur-xl xl:right-0"
+          >
+            <div className="flex -space-x-2">
+              <AnimatePresence mode="wait">
+                {floatingProducts.map((product, index) => product && (
+                  <motion.span
+                    key={`${product.name}-${iconOffset}`}
+                    initial={{ opacity: 0, scale: 0.7, x: 8 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.7, x: -8 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.3, delay: index * 0.06 }}
+                    className="block h-11 w-11 overflow-hidden rounded-full border-2 border-slate-950 bg-white"
+                  >
+                    <img src={product.image} alt="" className="h-full w-full object-cover" />
+                  </motion.span>
+                ))}
+              </AnimatePresence>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Your brand, everywhere</p>
+              <p className="mt-0.5 text-[10px] text-white/60">Designed to be remembered</p>
+            </div>
+            <ArrowUpRight className="h-4 w-4 text-brand-yellow" />
+          </motion.div>
+
+          <motion.div
+            aria-hidden="true"
+            className="absolute right-8 top-10 h-2 w-2 rounded-full bg-brand-yellow"
+            animate={reduceMotion ? undefined : { y: [0, -12, 0], opacity: [0.45, 1, 0.45] }}
+            transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            aria-hidden="true"
+            className="absolute bottom-16 left-12 h-1.5 w-1.5 rounded-full bg-white"
+            animate={reduceMotion ? undefined : { y: [0, 10, 0], opacity: [0.35, 0.9, 0.35] }}
+            transition={{ duration: 4.4, repeat: Infinity, ease: 'easeInOut' }}
+          />
         </div>
-      )}
+      </div>
 
       <div className="absolute inset-x-4 bottom-28 flex items-center justify-between gap-4 sm:inset-x-6 lg:bottom-32 lg:inset-x-8">
         <div className="inline-flex items-center gap-2 rounded-full glass-dark px-3.5 py-2">
