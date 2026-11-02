@@ -15,9 +15,9 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5002',
   'http://127.0.0.1:80',
-  'http://13.127.87.230:3000',
-  'http://13.127.87.230:5002',
-  'http://13.127.87.230:80',
+  'http://43.204.188.46:3000',
+  'http://43.204.188.46:5002',
+  'http://43.204.188.46:80',
   'https://api.adihuman.com',
   'https://adihuman.com',
   'https://catalog.adihuman.com'

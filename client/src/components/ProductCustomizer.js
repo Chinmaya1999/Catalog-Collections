@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ImagePlus,
@@ -185,7 +186,7 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
     <motion.section
       aria-labelledby="customizer-title"
       initial={false}
-      className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-[#f8f7f4] shadow-lg sm:rounded-[1.75rem] xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overscroll-contain"
+      className={`w-full overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-[#f8f7f4] shadow-lg sm:rounded-[1.75rem] xl:flex xl:min-h-0 xl:flex-col ${product ? 'xl:h-[calc(100vh-10rem)]' : 'xl:max-h-[calc(100vh-10rem)]'}`}
     >
           <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-5 py-4 sm:px-7">
             <div className="flex min-w-0 items-center gap-3">
@@ -204,19 +205,19 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
             )}
           </header>
 
-          <div className="grid min-w-0 grid-cols-1">
-            <div className="flex min-w-0 flex-col gap-3 p-3 sm:p-5">
+          <div className="grid min-w-0 shrink-0 grid-cols-1">
+            <div className="flex min-w-0 flex-col gap-3 p-3 sm:p-5 xl:gap-2 xl:p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-slate-900">{product?.name || 'Choose a product'}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{product ? 'Live preview · Logo shown for placement only' : 'Click a brush on any product to start designing'}</p>
+                  <p className="mt-0.5 text-xs text-slate-500 xl:hidden">{product ? 'Live preview · Logo shown for placement only' : 'Click a brush on any product to start designing'}</p>
                 </div>
                 {product && <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
                   {typeof product.priceFrom === 'number' ? `From ₹${product.priceFrom.toLocaleString('en-IN')}` : 'Price on request'}
                 </span>}
               </div>
 
-              <div ref={previewRef} className="relative flex min-h-[220px] items-center justify-center overflow-hidden rounded-[1.35rem] border border-slate-200/70 bg-[radial-gradient(ellipse_at_50%_38%,#fff_0%,#f1f0eb_67%,#e6e4dd_100%)] sm:min-h-[300px]">
+              <div ref={previewRef} className="relative flex min-h-[220px] items-center justify-center overflow-hidden rounded-[1.35rem] border border-slate-200/70 bg-[radial-gradient(ellipse_at_50%_38%,#fff_0%,#f1f0eb_67%,#e6e4dd_100%)] sm:min-h-[300px] xl:h-[18vh] xl:min-h-[150px] xl:max-h-[180px]">
                 <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(rgba(23,24,23,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(23,24,23,0.025)_1px,transparent_1px)] bg-[size:24px_24px]" />
                 {activeImage ? (
                   <motion.img
@@ -224,7 +225,7 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
                     transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }}
                     src={getImageUrl(activeImage.path)}
                     alt={product?.name || 'Product mockup'}
-                    className="absolute inset-0 h-full w-full object-contain p-7 sm:p-10"
+                    className="absolute inset-0 h-full w-full object-contain p-7 sm:p-10 xl:p-5"
                   />
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -317,17 +318,18 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
                 </div>
               )}
 
-              <p className="text-[11px] leading-5 text-slate-500">{product ? 'This preview helps show your branding idea. Final print size and placement are confirmed with our team.' : 'Choose a product using its brush button. It will move into this preview for customization.'}</p>
+              <p className="text-[11px] leading-5 text-slate-500 xl:hidden">{product ? 'This preview helps show your branding idea. Final print size and placement are confirmed with our team.' : 'Choose a product using its brush button. It will move into this preview for customization.'}</p>
               {(logo || brandName) && activeImage && <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800"><Move className="h-3.5 w-3.5" /> Drag your brand on the preview. Use arrow keys for precise moves.</p>}
             </div>
           </div>
 
             {product && (
               <>
-            <div className="min-w-0 space-y-5 border-t border-slate-200/80 bg-white p-4 sm:p-5">
-              <div className="mb-1">
+            <div className="min-w-0 space-y-5 border-t border-slate-200/80 bg-white p-4 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain">
+              <div className="mb-1 xl:sticky xl:top-0 xl:z-10 xl:-mx-5 xl:-mt-5 xl:mb-2 xl:flex xl:items-center xl:justify-between xl:gap-2 xl:border-b xl:border-slate-100 xl:bg-white xl:px-5 xl:py-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-800">Design controls</p>
-                <p className="mt-1 text-xs text-slate-500">Customize your branding, then drag it onto the product preview.</p>
+                <p className="mt-1 text-xs text-slate-500 xl:hidden">Customize your branding, then drag it onto the product preview.</p>
+                <p className="hidden shrink-0 items-center gap-1 text-[10px] font-semibold text-amber-800 xl:flex"><ChevronDown className="h-3.5 w-3.5" /> Scroll for more</p>
               </div>
               <section>
                 <label htmlFor="custom-brand-name" className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
@@ -468,9 +470,9 @@ const ProductCustomizer = ({ product, onClose, onRequestQuote }) => {
               </section>
             </div>
 
-          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200/80 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-            <p className="text-[11px] leading-5 text-slate-500">Your logo stays on this device for preview. Attach the original logo after WhatsApp opens.</p>
-            <button type="button" onClick={handleRequestQuote} disabled={!product} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#171817] px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-500 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 disabled:cursor-not-allowed disabled:opacity-40">
+          <footer className="flex shrink-0 flex-col gap-2 border-t border-slate-200/80 bg-white px-4 py-3 sm:px-5">
+            <p className="text-center text-[10px] leading-4 text-slate-500">Your logo stays on this device for preview. Attach the original logo after WhatsApp opens.</p>
+            <button type="button" onClick={handleRequestQuote} disabled={!product} className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#171817] px-4 py-3 text-sm font-bold text-white transition hover:bg-amber-500 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 disabled:cursor-not-allowed disabled:opacity-40">
               <MessageCircle className="h-4 w-4" /> Request custom quote <ArrowRight className="h-4 w-4" />
             </button>
           </footer>
